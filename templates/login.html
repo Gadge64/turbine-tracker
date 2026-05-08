@@ -3,6 +3,7 @@
 <h2>Login</h2>
 <div class="card">
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field"><label>Username</label><input name="username" required></div>
     <div class="field"><label>Password</label><input type="password" name="password" required></div>
     <div class="actions-row"><button type="submit">Login</button></div>

@@ -3,6 +3,7 @@
 <h2>Add Monthly Entry</h2>
 <div class="card">
 <form method="post" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid two">
     <div><label>Year</label><input type="number" name="year" value="{{ default_year }}" required></div>
     <div><label>Month</label><input type="number" name="month" value="{{ default_month }}" min="1" max="12" required></div>

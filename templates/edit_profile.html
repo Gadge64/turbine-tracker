@@ -3,6 +3,7 @@
 <h2>Edit Profile</h2>
 <div class="card">
 <form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <div class="form-grid two">
 <div><label>Name</label><input name="full_name" value="{{ user.full_name or '' }}"></div>
 <div><label>Phone</label><input name="phone_number" value="{{ user.phone_number or '' }}"></div>

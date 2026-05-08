@@ -22,17 +22,19 @@ from flask import (
     url_for,
 )
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from flask_wtf.csrf import CSRFProtect
+from sqlalchemy import func, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__, instance_relative_config=True)
-app.config["SECRET_KEY"] = "change-this-to-a-random-secret-key"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or "dev-only-insecure-key"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(app.instance_path, "wind.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 os.makedirs(app.instance_path, exist_ok=True)
 
 db = SQLAlchemy(app)
+csrf = CSRFProtect(app)
 
 
 class User(db.Model):
@@ -287,6 +289,11 @@ def get_current_user() -> Optional[User]:
     if not user_id:
         return None
     return db.session.get(User, user_id)
+
+
+@app.context_processor
+def inject_nav_user():
+    return {"nav_user": get_current_user()}
 
 
 def login_required(view_func):
@@ -599,7 +606,7 @@ def add_entry():
 @login_required
 def edit_entry(entry_id: int):
     user = get_current_user()
-    entry = TurbineEntry.query.get_or_404(entry_id)
+    entry = db.get_or_404(TurbineEntry, entry_id)
     if entry.user_id != user.id:
         abort(403)
 
@@ -643,7 +650,7 @@ def edit_entry(entry_id: int):
 @login_required
 def delete_entry(entry_id: int):
     user = get_current_user()
-    entry = TurbineEntry.query.get_or_404(entry_id)
+    entry = db.get_or_404(TurbineEntry, entry_id)
     if entry.user_id != user.id:
         abort(403)
     db.session.delete(entry)
@@ -689,9 +696,17 @@ def edit_profile():
 @login_required
 def users():
     viewer = get_current_user()
+    stats = {
+        row.user_id: row
+        for row in db.session.query(
+            TurbineEntry.user_id,
+            func.count(TurbineEntry.id).label("entry_count"),
+            func.sum(TurbineEntry.e_mon_kwh).label("total_e_mon"),
+        ).group_by(TurbineEntry.user_id).all()
+    }
     rows = []
     for u in User.query.order_by(User.username.asc()).all():
-        entries = TurbineEntry.query.filter_by(user_id=u.id).all()
+        s = stats.get(u.id)
         rows.append({
             "id": u.id,
             "display_name": user_display_name(u),
@@ -699,8 +714,8 @@ def users():
             "turbine_capacity_kw": u.turbine_capacity_kw,
             "inverter_model": u.inverter_model,
             "eircode": u.eircode if ((viewer.id == u.id) or u.share_address()) else None,
-            "entry_count": len(entries),
-            "total_e_mon": safe_sum([e.e_mon_safe() for e in entries]),
+            "entry_count": s.entry_count if s else 0,
+            "total_e_mon": float(s.total_e_mon) if s and s.total_e_mon is not None else 0.0,
         })
     return render_template("users.html", rows=rows)
 
@@ -709,7 +724,7 @@ def users():
 @login_required
 def user_detail(user_id: int):
     viewer = get_current_user()
-    u = User.query.get_or_404(user_id)
+    u = db.get_or_404(User, user_id)
     entries = TurbineEntry.query.filter_by(user_id=u.id).order_by(TurbineEntry.year.asc(), TurbineEntry.month.asc()).all()
     totals = {
         "entries": len(entries),
@@ -863,7 +878,7 @@ def admin_users():
 @app.route("/admin/users/<int:user_id>/reset-password", methods=["GET", "POST"])
 @admin_required
 def admin_reset_password(user_id: int):
-    target_user = User.query.get_or_404(user_id)
+    target_user = db.get_or_404(User, user_id)
     if request.method == "POST":
         new_password = request.form.get("new_password") or ""
         if len(new_password) < 6:

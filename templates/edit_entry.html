@@ -3,6 +3,7 @@
 <h2>Edit Monthly Entry</h2>
 <div class="card">
 <form method="post" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid two">
     <div><label>Year</label><input type="number" name="year" value="{{ entry.year }}" required></div>
     <div><label>Month</label><input type="number" name="month" value="{{ entry.month }}" min="1" max="12" required></div>
@@ -19,6 +20,6 @@
   </div>
   <div class="actions-row"><button type="submit">Save changes</button><a class="button-link btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a></div>
 </form>
-<form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Delete this entry?');"><button class="btn-danger">Delete entry</button></form>
+<form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Delete this entry?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-danger">Delete entry</button></form>
 </div>
 {% endblock %}
