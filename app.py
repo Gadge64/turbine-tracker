@@ -124,6 +124,13 @@ class TurbineEntry(db.Model):
             return None
         return (e1 or 0.0) + (e2 or 0.0)
 
+    def inverter_total_combined(self) -> Optional[float]:
+        v1 = None if self.inverter_total_kwh is None else float(self.inverter_total_kwh)
+        v2 = None if self.inverter_total_kwh_2 is None else float(self.inverter_total_kwh_2)
+        if v1 is None and v2 is None:
+            return None
+        return (v1 or 0.0) + (v2 or 0.0)
+
     def co2_safe(self) -> Optional[float]:
         return None if self.co2_kg is None else float(self.co2_kg)
 
@@ -508,13 +515,11 @@ def dashboard():
         return [None if v is None else float(v) for v in vals]
 
     chart_data = {
-        "E-mon 1 (kWh)": series([e.e_mon_safe() for e in entries]),
-        "E-mon 2 (kWh)": series([e.e_mon_2_safe() for e in entries]),
+        "E-mon (kWh)": series([e.e_mon_total_kwh() for e in entries]),
         "Import total (kWh)": series([e.import_total_kwh() for e in entries]),
         "Export total (kWh)": series([e.export_total_kwh() for e in entries]),
         "Used from wind (kWh)": series([e.used_from_wind_effective_kwh() for e in entries]),
-        "Inverter 1 total (kWh)": series([e.inverter_total_kwh for e in entries]),
-        "Inverter 2 total (kWh)": series([e.inverter_total_kwh_2 for e in entries]),
+        "Inverter total (kWh)": series([e.inverter_total_combined() for e in entries]),
         "House total (Wind & Grid)": series([e.house_total_wind_grid_kwh() for e in entries]),
         "Value @ tariff": series([e.value_at_tariff() for e in entries]),
         "CO₂ (kg)": series([e.co2_safe() for e in entries]),
@@ -545,10 +550,8 @@ def dashboard():
             {"label": "Import total (kWh)", "values": month_values(lambda e: e.import_total_kwh())},
             {"label": "Export total (kWh)", "values": month_values(lambda e: e.export_total_kwh())},
             {"label": "Used from wind (kWh)", "values": month_values(lambda e: e.used_from_wind_effective_kwh())},
-            {"label": "E-mon 1 (kWh)", "values": month_values(lambda e: e.e_mon_safe())},
-            {"label": "E-mon 2 (kWh)", "values": month_values(lambda e: e.e_mon_2_safe())},
-            {"label": "Inverter 1 total (kWh)", "values": month_values(lambda e: e.inverter_total_kwh)},
-            {"label": "Inverter 2 total (kWh)", "values": month_values(lambda e: e.inverter_total_kwh_2)},
+            {"label": "E-mon (kWh)", "values": month_values(lambda e: e.e_mon_total_kwh())},
+            {"label": "Inverter total (kWh)", "values": month_values(lambda e: e.inverter_total_combined())},
             {"label": "House total (Wind & Grid)", "values": month_values(lambda e: e.house_total_wind_grid_kwh())},
             {"label": "Value @ tariff", "values": month_values(lambda e: e.value_at_tariff())},
             {"label": "CO₂ (kg)", "values": month_values(lambda e: e.co2_safe())},
@@ -1039,6 +1042,35 @@ def admin_download_backup(filename: str):
 @admin_required
 def admin_users():
     return render_template("admin_users.html", users=User.query.order_by(User.username.asc()).all())
+
+
+@app.route("/admin/users/new", methods=["GET", "POST"])
+@admin_required
+def admin_new_user():
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        full_name = (request.form.get("full_name") or "").strip() or None
+        is_admin_flag = 1 if request.form.get("is_admin") == "on" else 0
+
+        if not username or not password:
+            flash("Username and password are required.", "danger")
+            return render_template("admin_new_user.html")
+        if User.query.filter_by(username=username).first():
+            flash("Username already exists.", "danger")
+            return render_template("admin_new_user.html")
+
+        new_user = User(
+            username=username,
+            password_hash=generate_password_hash(password),
+            is_admin=is_admin_flag,
+            full_name=full_name,
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        flash(f"User {username} created.", "success")
+        return redirect(url_for("admin_users"))
+    return render_template("admin_new_user.html")
 
 
 @app.route("/admin/users/<int:user_id>/reset-password", methods=["GET", "POST"])
