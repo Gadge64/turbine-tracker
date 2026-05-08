@@ -832,6 +832,112 @@ def export_csv():
     )
 
 
+@app.route("/import/csv/template")
+@login_required
+def import_csv_template():
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([
+        "year", "month", "import_start_kwh", "import_end_kwh",
+        "export_start_kwh", "export_end_kwh", "e_mon_kwh",
+        "used_from_wind_kwh_override", "inverter_total_kwh",
+        "tariff_rate", "co2_kg", "notes",
+    ])
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="import_template.csv"'},
+    )
+
+
+@app.route("/import/csv", methods=["GET", "POST"])
+@login_required
+def import_csv():
+    user = get_current_user()
+
+    if request.method == "GET":
+        return render_template("import_csv.html")
+
+    file = request.files.get("csv_file")
+    if not file or not file.filename:
+        flash("No file selected.", "danger")
+        return render_template("import_csv.html")
+
+    try:
+        content = file.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        flash("Could not read file — make sure it is UTF-8 encoded.", "danger")
+        return render_template("import_csv.html")
+
+    reader = csv.DictReader(StringIO(content))
+    imported = 0
+    skipped_dup = 0
+    errors: List[str] = []
+
+    for i, row in enumerate(reader, start=2):
+        if imported + skipped_dup >= 12:
+            flash("Limit of 12 rows reached — remaining rows were ignored.", "warning")
+            break
+
+        try:
+            year = int((row.get("year") or "").strip())
+            month = int((row.get("month") or "").strip())
+        except ValueError:
+            errors.append(f"Row {i}: missing or invalid year/month.")
+            continue
+
+        if not (1 <= month <= 12):
+            errors.append(f"Row {i}: month must be between 1 and 12.")
+            continue
+
+        if find_duplicate_entry(user.id, year, month):
+            skipped_dup += 1
+            continue
+
+        def col(name: str) -> Optional[float]:
+            v = (row.get(name) or "").strip()
+            try:
+                return float(v) if v else None
+            except ValueError:
+                return None
+
+        e_mon = col("e_mon_kwh")
+        inverter_manual = col("inverter_total_kwh")
+        entry = TurbineEntry(
+            user_id=user.id,
+            year=year,
+            month=month,
+            date=datetime.date(year, month, 1),
+            import_start_kwh=col("import_start_kwh"),
+            import_end_kwh=col("import_end_kwh"),
+            export_start_kwh=col("export_start_kwh"),
+            export_end_kwh=col("export_end_kwh"),
+            used_from_wind_kwh=col("used_from_wind_kwh_override") or col("used_from_wind_kwh"),
+            inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(user.id, year, month, e_mon),
+            e_mon_kwh=e_mon,
+            tariff_rate=col("tariff_rate"),
+            co2_kg=col("co2_kg"),
+            notes=(row.get("notes") or "").strip() or None,
+        )
+        db.session.add(entry)
+        imported += 1
+
+    if imported:
+        db.session.commit()
+
+    parts = []
+    if imported:
+        parts.append(f"{imported} entr{'y' if imported == 1 else 'ies'} imported")
+    if skipped_dup:
+        parts.append(f"{skipped_dup} skipped (month already exists)")
+    if parts:
+        flash(", ".join(parts) + ".", "success")
+    for e in errors:
+        flash(e, "danger")
+
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/backup/download")
 @login_required
 def download_database_backup():

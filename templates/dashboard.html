@@ -6,6 +6,7 @@
   <div class="actions-row">
     <a class="button-link" href="{{ url_for('add_entry') }}">Add monthly entry</a>
     <a class="button-link btn-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
+    <a class="button-link btn-secondary" href="{{ url_for('import_csv') }}">Import CSV</a>
     <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Download Full Backup</a>
   </div>
   <p class="muted"><strong>Entries:</strong> {{ entry_count }} | <strong>Total E-mon:</strong> {{ "%.2f"|format(total_e_mon) }} kWh</p>

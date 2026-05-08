@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Import CSV</h2>
+<div class="card">
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="stack">
+      <div>
+        <label>CSV file (max 12 months)</label>
+        <input type="file" name="csv_file" accept=".csv" required>
+      </div>
+      <p class="muted">
+        Existing months are skipped — they will not be overwritten.<br>
+        Columns accepted: <code>year, month, import_start_kwh, import_end_kwh, export_start_kwh, export_end_kwh, e_mon_kwh, used_from_wind_kwh_override, inverter_total_kwh, tariff_rate, co2_kg, notes</code><br>
+        You can also import a file exported from this app — computed columns are ignored automatically.
+      </p>
+      <div class="actions-row">
+        <button type="submit">Import</button>
+        <a class="button-link btn-secondary" href="{{ url_for('import_csv_template') }}">Download blank template</a>
+        <a class="button-link btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
