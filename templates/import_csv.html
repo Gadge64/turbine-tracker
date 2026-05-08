@@ -5,6 +5,16 @@
   <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="stack">
+      {% if all_users %}
+      <div>
+        <label>Import for user</label>
+        <select name="target_user_id">
+          {% for u in all_users %}
+          <option value="{{ u.id }}" {% if u.id == selected_user_id %}selected{% endif %}>{{ u.full_name or u.username }} ({{ u.username }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
       <div>
         <label>CSV file (max 12 months)</label>
         <input type="file" name="csv_file" accept=".csv" required>

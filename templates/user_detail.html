@@ -8,6 +8,7 @@
 <tr><th>Name</th><td>{{ u.full_name or "—" }}</td></tr>
 <tr><th>Phone</th><td>{% if can_view_phone %}{{ u.phone_number or "—" }}{% else %}—{% endif %}</td></tr>
 <tr><th>Address</th><td>{% if can_view_address %}{{ u.address_line1 or "" }} {{ u.address_line2 or "" }} {{ u.town_city or "" }} {{ u.county or "" }} {{ u.eircode or "" }}{% else %}—{% endif %}</td></tr>
+<tr><th>MPRN</th><td>{% if can_view_address %}{{ u.mprn or "—" }}{% else %}—{% endif %}</td></tr>
 <tr><th>Turbine</th><td>{{ u.turbine_model or "—" }}</td></tr>
 <tr><th>Capacity</th><td>{{ u.turbine_capacity_kw or "—" }}</td></tr>
 <tr><th>Service notes</th><td class="note-cell">{{ u.service_notes or "" }}</td></tr>

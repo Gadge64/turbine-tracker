@@ -11,6 +11,7 @@
 <tr><th>Name</th><td>{{ user.full_name or "—" }}</td></tr>
 <tr><th>Phone</th><td>{{ user.phone_number or "—" }}</td></tr>
 <tr><th>Address</th><td>{{ user.address_line1 or "" }} {{ user.address_line2 or "" }} {{ user.town_city or "" }} {{ user.county or "" }} {{ user.eircode or "" }}</td></tr>
+<tr><th>MPRN</th><td>{{ user.mprn or "—" }}</td></tr>
 <tr><th>Turbine model</th><td>{{ user.turbine_model or "—" }}</td></tr>
 <tr><th>Capacity</th><td>{{ user.turbine_capacity_kw or "—" }}</td></tr>
 <tr><th>Inverter</th><td>{{ user.inverter_model or "—" }}</td></tr>

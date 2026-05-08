@@ -12,6 +12,7 @@
 <div><label>Town/City</label><input name="town_city" value="{{ user.town_city or '' }}"></div>
 <div><label>County</label><input name="county" value="{{ user.county or '' }}"></div>
 <div><label>Eircode</label><input name="eircode" value="{{ user.eircode or '' }}"></div>
+<div><label>MPRN</label><input name="mprn" value="{{ user.mprn or '' }}"></div>
 <div><label>Privacy</label><label><input type="checkbox" name="share_phone_public" {% if user.share_phone_public %}checked{% endif %}> Show phone</label><label><input type="checkbox" name="share_address_public" {% if user.share_address_public %}checked{% endif %}> Show address</label></div>
 <div><label>Turbine model</label><input name="turbine_model" value="{{ user.turbine_model or '' }}"></div>
 <div><label>Turbine capacity (kW)</label><input type="number" step="any" name="turbine_capacity_kw" value="{{ user.turbine_capacity_kw if user.turbine_capacity_kw is not none else '' }}"></div>

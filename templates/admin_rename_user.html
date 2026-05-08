@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Rename User</h2>
+<div class="card">
+  <p>Current username: <strong>{{ target_user.username }}</strong></p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="stack">
+      <div><label>New username</label><input name="username" value="{{ target_user.username }}" required></div>
+      <div class="actions-row">
+        <button type="submit">Save</button>
+        <a class="button-link btn-secondary" href="{{ url_for('admin_users') }}">Cancel</a>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

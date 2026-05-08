@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Clone Profile</h2>
+<div class="card">
+  <p>Creating a new user based on <strong>{{ source.username }}</strong>. Turbine and system details will be copied. Contact info and entries will not.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid two stack">
+      <div><label>New username</label><input name="username" required></div>
+      <div><label>Password</label><input type="password" name="password" required></div>
+      <div class="span-2"><label>Full name</label><input name="full_name"></div>
+    </div>
+    <div class="actions-row">
+      <button type="submit">Create clone</button>
+      <a class="button-link btn-secondary" href="{{ url_for('admin_users') }}">Cancel</a>
+    </div>
+  </form>
+  <h4>Fields that will be copied</h4>
+  <table><tbody>
+    <tr><th>Turbine model</th><td>{{ source.turbine_model or "—" }}</td></tr>
+    <tr><th>Capacity (kW)</th><td>{{ source.turbine_capacity_kw or "—" }}</td></tr>
+    <tr><th>Turbine size notes</th><td>{{ source.turbine_size_notes or "—" }}</td></tr>
+    <tr><th>Inverter model</th><td>{{ source.inverter_model or "—" }}</td></tr>
+    <tr><th>Install date</th><td>{{ source.install_date or "—" }}</td></tr>
+    <tr><th>System notes</th><td>{{ source.system_notes or "—" }}</td></tr>
+    <tr><th>MPRN</th><td>{{ source.mprn or "—" }}</td></tr>
+  </tbody></table>
+</div>
+{% endblock %}

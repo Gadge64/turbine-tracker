@@ -2,9 +2,14 @@
 {% block content %}
 <h2>Admin - Users</h2>
 <div class="card">
-<table><thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Admin</th><th>Reset Password</th></tr></thead><tbody>
+<table><thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Admin</th><th>Actions</th></tr></thead><tbody>
 {% for u in users %}
-<tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.full_name or "" }}</td><td>{% if u.is_admin %}Yes{% else %}No{% endif %}</td><td><a href="{{ url_for('admin_reset_password', user_id=u.id) }}">Reset</a></td></tr>
+<tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.full_name or "" }}</td><td>{% if u.is_admin %}Yes{% else %}No{% endif %}</td>
+<td>
+  <a href="{{ url_for('admin_reset_password', user_id=u.id) }}">Reset password</a> ·
+  <a href="{{ url_for('admin_rename_user', user_id=u.id) }}">Rename</a> ·
+  <a href="{{ url_for('admin_clone_user', user_id=u.id) }}">Clone</a>
+</td></tr>
 {% endfor %}
 </tbody></table>
 </div>

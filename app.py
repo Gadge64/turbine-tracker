@@ -53,6 +53,8 @@ class User(db.Model):
     county = db.Column(db.String(100), nullable=True)
     eircode = db.Column(db.String(20), nullable=True)
 
+    mprn = db.Column(db.String(20), nullable=True)
+
     share_phone_public = db.Column(db.Integer, nullable=False, default=0)
     share_address_public = db.Column(db.Integer, nullable=False, default=0)
 
@@ -165,6 +167,7 @@ def ensure_user_schema_sqlite() -> None:
         "town_city": "TEXT",
         "county": "TEXT",
         "eircode": "TEXT",
+        "mprn": "TEXT",
         "share_phone_public": "INTEGER",
         "share_address_public": "INTEGER",
         "turbine_model": "TEXT",
@@ -677,6 +680,7 @@ def edit_profile():
         user.town_city = (request.form.get("town_city") or "").strip() or None
         user.county = (request.form.get("county") or "").strip() or None
         user.eircode = (request.form.get("eircode") or "").strip() or None
+        user.mprn = (request.form.get("mprn") or "").strip() or None
         user.share_phone_public = parse_checkbox(request.form, "share_phone_public")
         user.share_address_public = parse_checkbox(request.form, "share_address_public")
         user.turbine_model = (request.form.get("turbine_model") or "").strip() or None
@@ -855,19 +859,27 @@ def import_csv_template():
 def import_csv():
     user = get_current_user()
 
+    all_users = User.query.order_by(User.username.asc()).all() if user.is_admin else None
+
     if request.method == "GET":
-        return render_template("import_csv.html")
+        return render_template("import_csv.html", all_users=all_users, selected_user_id=user.id)
+
+    if user.is_admin:
+        target_user_id = parse_int_field(request.form, "target_user_id") or user.id
+        target_user = db.session.get(User, target_user_id) or user
+    else:
+        target_user = user
 
     file = request.files.get("csv_file")
     if not file or not file.filename:
         flash("No file selected.", "danger")
-        return render_template("import_csv.html")
+        return render_template("import_csv.html", all_users=all_users, selected_user_id=target_user.id)
 
     try:
         content = file.read().decode("utf-8-sig")
     except UnicodeDecodeError:
         flash("Could not read file — make sure it is UTF-8 encoded.", "danger")
-        return render_template("import_csv.html")
+        return render_template("import_csv.html", all_users=all_users, selected_user_id=target_user.id)
 
     reader = csv.DictReader(StringIO(content))
     imported = 0
@@ -890,7 +902,7 @@ def import_csv():
             errors.append(f"Row {i}: month must be between 1 and 12.")
             continue
 
-        if find_duplicate_entry(user.id, year, month):
+        if find_duplicate_entry(target_user.id, year, month):
             skipped_dup += 1
             continue
 
@@ -904,7 +916,7 @@ def import_csv():
         e_mon = col("e_mon_kwh")
         inverter_manual = col("inverter_total_kwh")
         entry = TurbineEntry(
-            user_id=user.id,
+            user_id=target_user.id,
             year=year,
             month=month,
             date=datetime.date(year, month, 1),
@@ -913,7 +925,7 @@ def import_csv():
             export_start_kwh=col("export_start_kwh"),
             export_end_kwh=col("export_end_kwh"),
             used_from_wind_kwh=col("used_from_wind_kwh_override") or col("used_from_wind_kwh"),
-            inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(user.id, year, month, e_mon),
+            inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(target_user.id, year, month, e_mon),
             e_mon_kwh=e_mon,
             tariff_rate=col("tariff_rate"),
             co2_kg=col("co2_kg"),
@@ -996,6 +1008,59 @@ def admin_reset_password(user_id: int):
         flash(f"Password reset for {target_user.username}.", "success")
         return redirect(url_for("admin_users"))
     return render_template("admin_reset_password.html", target_user=target_user)
+
+
+@app.route("/admin/users/<int:user_id>/rename", methods=["GET", "POST"])
+@admin_required
+def admin_rename_user(user_id: int):
+    target_user = db.get_or_404(User, user_id)
+    if request.method == "POST":
+        new_username = (request.form.get("username") or "").strip()
+        if not new_username:
+            flash("Username is required.", "danger")
+            return render_template("admin_rename_user.html", target_user=target_user)
+        if User.query.filter(User.username == new_username, User.id != user_id).first():
+            flash("That username is already taken.", "danger")
+            return render_template("admin_rename_user.html", target_user=target_user)
+        target_user.username = new_username
+        db.session.commit()
+        flash(f"Username updated to {new_username}.", "success")
+        return redirect(url_for("admin_users"))
+    return render_template("admin_rename_user.html", target_user=target_user)
+
+
+@app.route("/admin/users/<int:user_id>/clone", methods=["GET", "POST"])
+@admin_required
+def admin_clone_user(user_id: int):
+    source = db.get_or_404(User, user_id)
+    if request.method == "POST":
+        new_username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        full_name = (request.form.get("full_name") or "").strip() or None
+        if not new_username or not password:
+            flash("Username and password are required.", "danger")
+            return render_template("admin_clone_user.html", source=source)
+        if User.query.filter_by(username=new_username).first():
+            flash("Username already exists.", "danger")
+            return render_template("admin_clone_user.html", source=source)
+        new_user = User(
+            username=new_username,
+            password_hash=generate_password_hash(password),
+            is_admin=0,
+            full_name=full_name,
+            turbine_model=source.turbine_model,
+            turbine_capacity_kw=source.turbine_capacity_kw,
+            turbine_size_notes=source.turbine_size_notes,
+            inverter_model=source.inverter_model,
+            install_date=source.install_date,
+            system_notes=source.system_notes,
+            mprn=source.mprn,
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        flash(f"User {new_username} created as a clone of {source.username}.", "success")
+        return redirect(url_for("admin_users"))
+    return render_template("admin_clone_user.html", source=source)
 
 
 @app.route("/admin/users/<int:user_id>/add-entry", methods=["GET", "POST"])
