@@ -607,7 +607,7 @@ def add_entry():
 def edit_entry(entry_id: int):
     user = get_current_user()
     entry = db.get_or_404(TurbineEntry, entry_id)
-    if entry.user_id != user.id:
+    if entry.user_id != user.id and not user.is_admin:
         abort(403)
 
     if request.method == "POST":
@@ -651,7 +651,7 @@ def edit_entry(entry_id: int):
 def delete_entry(entry_id: int):
     user = get_current_user()
     entry = db.get_or_404(TurbineEntry, entry_id)
-    if entry.user_id != user.id:
+    if entry.user_id != user.id and not user.is_admin:
         abort(403)
     db.session.delete(entry)
     db.session.commit()
@@ -742,6 +742,7 @@ def user_detail(user_id: int):
         totals=totals,
         can_view_phone=(viewer.id == u.id) or u.share_phone(),
         can_view_address=(viewer.id == u.id) or u.share_address(),
+        viewer_is_admin=bool(viewer.is_admin),
     )
 
 
@@ -889,6 +890,67 @@ def admin_reset_password(user_id: int):
         flash(f"Password reset for {target_user.username}.", "success")
         return redirect(url_for("admin_users"))
     return render_template("admin_reset_password.html", target_user=target_user)
+
+
+@app.route("/admin/users/<int:user_id>/add-entry", methods=["GET", "POST"])
+@admin_required
+def admin_add_entry(user_id: int):
+    target_user = db.get_or_404(User, user_id)
+
+    if request.method == "GET":
+        today = datetime.date.today()
+        year = parse_int_field(request.args, "year") or today.year
+        month = parse_int_field(request.args, "month") or today.month
+
+        dup = find_duplicate_entry(target_user.id, year, month)
+        if dup:
+            flash(f"Entry already exists for {year}-{month:02d}. Opening it for editing.", "info")
+            return redirect(url_for("edit_entry", entry_id=dup.id))
+
+        prev_entry = get_previous_month_entry(target_user.id, year, month)
+        return render_template(
+            "admin_add_entry.html",
+            target_user=target_user,
+            default_year=year,
+            default_month=month,
+            default_import_start=prev_entry.import_end_kwh if prev_entry and prev_entry.import_end_kwh is not None else None,
+            default_export_start=prev_entry.export_end_kwh if prev_entry and prev_entry.export_end_kwh is not None else None,
+            default_tariff=prev_entry.tariff_safe() if prev_entry else 0.195,
+            default_inverter_total=prev_entry.inverter_total_kwh if prev_entry and prev_entry.inverter_total_kwh is not None else None,
+        )
+
+    year = parse_int_field(request.form, "year", "Year", required=True)
+    month = parse_int_field(request.form, "month", "Month", required=True)
+    if year is None or month is None or not (1 <= month <= 12):
+        flash("Valid year and month are required.", "danger")
+        return redirect(url_for("admin_add_entry", user_id=user_id))
+
+    if find_duplicate_entry(target_user.id, year, month):
+        flash(f"Entry already exists for {year}-{month:02d}.", "danger")
+        return redirect(url_for("user_detail", user_id=user_id))
+
+    e_mon = parse_float_field(request.form, "e_mon_kwh", "E-mon")
+    inverter_manual = parse_float_field(request.form, "inverter_total_kwh", "Inverter total")
+    entry = TurbineEntry(
+        user_id=target_user.id,
+        year=year,
+        month=month,
+        date=datetime.date(year, month, 1),
+        import_start_kwh=parse_float_field(request.form, "import_start_kwh"),
+        import_end_kwh=parse_float_field(request.form, "import_end_kwh"),
+        export_start_kwh=parse_float_field(request.form, "export_start_kwh"),
+        export_end_kwh=parse_float_field(request.form, "export_end_kwh"),
+        used_from_wind_kwh=parse_float_field(request.form, "used_from_wind_kwh"),
+        inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(target_user.id, year, month, e_mon),
+        e_mon_kwh=e_mon,
+        tariff_rate=parse_float_field(request.form, "tariff_rate"),
+        co2_kg=parse_float_field(request.form, "co2_kg"),
+        notes=(request.form.get("notes") or "").strip() or None,
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash(f"Entry saved for {user_display_name(target_user)}.", "success")
+    return redirect(url_for("user_detail", user_id=user_id))
 
 
 if __name__ == "__main__":
