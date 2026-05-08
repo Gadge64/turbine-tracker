@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Compare</h2>
+<div class="card">
+<table><thead><tr><th>User</th><th>Turbine</th><th>Capacity</th><th>Entries</th><th>Total E-mon</th><th>Import</th><th>Export</th></tr></thead><tbody>
+{% for s in summaries %}
+<tr><td>{{ s.display_name }}</td><td>{{ s.turbine_model or "—" }}</td><td>{{ s.turbine_capacity_kw or "—" }}</td><td>{{ s.count }}</td><td>{{ "%.2f"|format(s.total_e_mon) }}</td><td>{{ "%.2f"|format(s.total_import) }}</td><td>{{ "%.2f"|format(s.total_export) }}</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% if date_labels %}
+<div class="card">
+<label>Metric</label><select id="metric-select">{% for m in metric_labels %}<option value="{{ m }}" {% if m == default_metric %}selected{% endif %}>{{ m }}</option>{% endfor %}</select>
+<div style="height:360px"><canvas id="compareChart"></canvas></div>
+<script>
+document.addEventListener("DOMContentLoaded",function(){if(typeof Chart==="undefined")return;const labels={{ date_labels|tojson }};const datasetsByMetric={{ datasets_by_metric|tojson }};const sel=document.getElementById("metric-select");function ds(metric){return(datasetsByMetric[metric]||[]).map(d=>({label:d.label,data:d.data,fill:false,tension:.2,spanGaps:false}))}let chart=new Chart(document.getElementById("compareChart"),{type:"line",data:{labels:labels,datasets:ds(sel.value)},options:{responsive:true,maintainAspectRatio:false}});sel.addEventListener("change",function(){chart.data.datasets=ds(this.value);chart.update()});});
+</script>
+</div>
+{% endif %}
+{% endblock %}

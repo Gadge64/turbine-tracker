@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Monthly Entry</h2>
+<div class="card">
+<form method="post" class="stack">
+  <div class="form-grid two">
+    <div><label>Year</label><input type="number" name="year" value="{{ entry.year }}" required></div>
+    <div><label>Month</label><input type="number" name="month" value="{{ entry.month }}" min="1" max="12" required></div>
+    <div><label>Import on 1st day (kWh)</label><input type="number" step="any" name="import_start_kwh" value="{{ entry.import_start_kwh if entry.import_start_kwh is not none else '' }}"></div>
+    <div><label>Import on last day (kWh)</label><input type="number" step="any" name="import_end_kwh" value="{{ entry.import_end_kwh if entry.import_end_kwh is not none else '' }}"></div>
+    <div><label>Export on 1st day (kWh)</label><input type="number" step="any" name="export_start_kwh" value="{{ entry.export_start_kwh if entry.export_start_kwh is not none else '' }}"></div>
+    <div><label>Export on last day (kWh)</label><input type="number" step="any" name="export_end_kwh" value="{{ entry.export_end_kwh if entry.export_end_kwh is not none else '' }}"></div>
+    <div><label>E-mon (kWh)</label><input type="number" step="any" name="e_mon_kwh" value="{{ entry.e_mon_kwh if entry.e_mon_kwh is not none else '' }}"></div>
+    <div><label>Used from wind override (kWh)</label><input type="number" step="any" name="used_from_wind_kwh" value="{{ entry.used_from_wind_kwh if entry.used_from_wind_kwh is not none else '' }}"></div>
+    <div><label>Inverter Total cumulative (kWh)</label><input type="number" step="any" name="inverter_total_kwh" value="{{ entry.inverter_total_kwh if entry.inverter_total_kwh is not none else '' }}"><div class="muted">Clear this and save to recalculate.</div></div>
+    <div><label>Tariff rate</label><input type="number" step="any" name="tariff_rate" value="{{ entry.tariff_rate if entry.tariff_rate is not none else '' }}"></div>
+    <div><label>CO₂ (kg)</label><input type="number" step="any" name="co2_kg" value="{{ entry.co2_kg if entry.co2_kg is not none else '' }}"></div>
+    <div class="span-2"><label>Notes</label><textarea name="notes" rows="3">{{ entry.notes or "" }}</textarea></div>
+  </div>
+  <div class="actions-row"><button type="submit">Save changes</button><a class="button-link btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a></div>
+</form>
+<form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Delete this entry?');"><button class="btn-danger">Delete entry</button></form>
+</div>
+{% endblock %}

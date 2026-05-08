@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Wind Turbine Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:#f9fafb;color:#111827}
+    header{background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:5}
+    .container{max-width:1200px;margin:0 auto;padding:16px}
+    nav{display:flex;gap:10px;flex-wrap:wrap}
+    nav a,.button-link,button{display:inline-flex;align-items:center;padding:9px 12px;border-radius:10px;text-decoration:none;font-weight:700}
+    nav a{color:#111827}
+    nav a:hover{background:#f3f4f6}
+    button,.button-link{background:#111827;color:white;border:1px solid #111827;cursor:pointer}
+    .btn-secondary{background:#fff;color:#111827;border:1px solid #d1d5db}
+    .btn-danger{background:#991b1b;border-color:#991b1b}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:16px;margin:14px 0}
+    .stack>*+*{margin-top:12px}
+    .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+    .form-grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:900px){.form-grid.two{grid-template-columns:1fr 1fr}}
+    .span-2{grid-column:1/-1}
+    label{display:block;font-weight:700;margin-bottom:6px}
+    input,textarea,select{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px}
+    table{width:100%;border-collapse:collapse;background:#fff;margin:12px 0}
+    th,td{border:1px solid #e5e7eb;padding:9px;text-align:left;vertical-align:top}
+    th{background:#f3f4f6}
+    .muted{color:#6b7280;font-size:.92rem}
+    .flash{padding:12px;border-radius:10px;margin:12px 0;border:1px solid #e5e7eb;background:#fff}
+    .success{background:#f0fdf4;border-color:#86efac}.danger{background:#fef2f2;border-color:#fca5a5}.info{background:#eff6ff;border-color:#93c5fd}
+    .note-cell{max-width:380px;white-space:pre-wrap;word-break:break-word}
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <nav>
+      <a href="{{ url_for('home') }}">Home</a>
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('add_entry') }}">Add Entry</a>
+        <a href="{{ url_for('compare') }}">Compare</a>
+        <a href="{{ url_for('users') }}">Users</a>
+        <a href="{{ url_for('profile') }}">Profile</a>
+        <a href="{{ url_for('download_database_backup') }}">Download Backup</a>
+        <a href="{{ url_for('admin_users') }}">Admin</a>
+        <a href="{{ url_for('admin_backups') }}">Backups</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('register') }}">Register</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

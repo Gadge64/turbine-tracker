@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+<div class="card">
+  <p>Welcome, <strong>{{ user.full_name or user.username }}</strong>.</p>
+  <div class="actions-row">
+    <a class="button-link" href="{{ url_for('add_entry') }}">Add monthly entry</a>
+    <a class="button-link btn-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
+    <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Download Full Backup</a>
+  </div>
+  <p class="muted"><strong>Entries:</strong> {{ entry_count }} | <strong>Total E-mon:</strong> {{ "%.2f"|format(total_e_mon) }} kWh</p>
+</div>
+
+<div class="card">
+  <h3>Pie charts (kWh only)</h3>
+  <p class="muted">Past 12 months start: <strong>{{ pie_last12_start }}</strong></p>
+  <div class="form-grid two">
+    <div><label>YTD</label><div style="height:300px"><canvas id="pieYtd"></canvas></div></div>
+    <div><label>Past 12 months</label><div style="height:300px"><canvas id="pie12m"></canvas></div></div>
+    <div class="span-2"><label>All time</label><div style="height:320px"><canvas id="pieAll"></canvas></div></div>
+  </div>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+if(typeof Chart==="undefined") return;
+const labels=["Imported total (kWh)","Exported total (kWh)","Used from wind (kWh)"];
+const dataSets={
+ pieYtd:[{{ pie_ytd_kwh["import_total_kwh"]|tojson }},{{ pie_ytd_kwh["export_total_kwh"]|tojson }},{{ pie_ytd_kwh["used_from_wind_kwh"]|tojson }}],
+ pie12m:[{{ pie_12m_kwh["import_total_kwh"]|tojson }},{{ pie_12m_kwh["export_total_kwh"]|tojson }},{{ pie_12m_kwh["used_from_wind_kwh"]|tojson }}],
+ pieAll:[{{ pie_all_kwh["import_total_kwh"]|tojson }},{{ pie_all_kwh["export_total_kwh"]|tojson }},{{ pie_all_kwh["used_from_wind_kwh"]|tojson }}]
+};
+function sum(v){return v.reduce((a,b)=>a+(Number(b)||0),0)}
+const valueLabelsPlugin={id:"valueLabelsPlugin",afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);const data=chart.data.datasets[0].data;const total=sum(data);if(!total)return;ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";meta.data.forEach((arc,i)=>{const v=Number(data[i])||0;if(v<=0||v/total<0.08)return;const p=arc.tooltipPosition();const text=(v>=100?Math.round(v):v.toFixed(1))+" kWh";ctx.font="12px sans-serif";ctx.lineWidth=3;ctx.strokeStyle="rgba(255,255,255,.85)";ctx.strokeText(text,p.x,p.y);ctx.fillStyle="#111";ctx.fillText(text,p.x,p.y)});ctx.restore();}};
+function pie(id,title){const values=dataSets[id]; if(sum(values)<=0)return; new Chart(document.getElementById(id),{type:"pie",data:{labels:labels,datasets:[{data:values}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"},title:{display:true,text:title}}},plugins:[valueLabelsPlugin]});}
+pie("pieYtd","YTD kWh breakdown");pie("pie12m","Past 12 months kWh breakdown");pie("pieAll","All time kWh breakdown");
+});
+</script>
+</div>
+
+{% if labels and chart_data %}
+<div class="card">
+  <h3>Graph</h3>
+  <div class="form-grid two">
+    <div><label>Metric</label><select id="metric">{% for key in chart_data %}<option value="{{ key }}">{{ key }}</option>{% endfor %}</select></div>
+    <div class="span-2"><div style="height:360px"><canvas id="mainChart"></canvas></div></div>
+  </div>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+if(typeof Chart==="undefined") return;
+const lineLabels={{ labels|tojson }};
+const chartData={{ chart_data|tojson }};
+const metricSelect=document.getElementById("metric");
+const ctx=document.getElementById("mainChart");
+function datasetFor(metric){return[{label:metric,data:chartData[metric]||[],fill:false,tension:0.2,spanGaps:false}]}
+let currentMetric=metricSelect.value;
+let chart=new Chart(ctx,{type:"line",data:{labels:lineLabels,datasets:datasetFor(currentMetric)},options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:"Month"}},y:{title:{display:true,text:currentMetric}}}}});
+metricSelect.addEventListener("change",function(){currentMetric=this.value;chart.data.datasets=datasetFor(currentMetric);chart.options.scales.y.title.text=currentMetric;chart.update();});
+});
+</script>
+</div>
+{% endif %}
+
+<div class="card">
+<h3>Monthly entries</h3>
+{% if entries %}
+<table><thead><tr><th>Year</th><th>Month</th><th>E-mon</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inverter total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th></tr></thead><tbody>
+{% for e in entries %}
+<tr>
+<td>{{ e.year }}</td><td>{{ e.month }}</td>
+<td>{{ "" if e.e_mon_kwh is none else "%.2f"|format(e.e_mon_kwh) }}</td>
+<td>{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
+<td>{{ "" if e.export_total_kwh() is none else "%.2f"|format(e.export_total_kwh()) }}</td>
+<td>{{ "" if e.used_from_wind_effective_kwh() is none else "%.2f"|format(e.used_from_wind_effective_kwh()) }}</td>
+<td>{{ "" if e.inverter_total_kwh is none else "%.2f"|format(e.inverter_total_kwh) }}</td>
+<td>{{ "" if e.value_at_tariff() is none else "%.2f"|format(e.value_at_tariff()) }}</td>
+<td>{{ "" if e.co2_kg is none else "%.2f"|format(e.co2_kg) }}</td>
+<td class="note-cell">{{ e.notes or "" }}</td><td><a href="{{ url_for('edit_entry', entry_id=e.id) }}">Edit</a></td>
+</tr>
+{% endfor %}
+</tbody></table>
+{% else %}<p>No entries yet.</p>{% endif %}
+</div>
+
+{% if year_tables %}
+<div class="card"><h3>Year breakdown</h3>
+{% for yt in year_tables %}
+<h4>{{ yt["year"] }}</h4>
+<table><thead><tr><th>Field</th>{% for m in range(1,13) %}<th>{{ m }}</th>{% endfor %}<th>YTD</th></tr></thead><tbody>
+{% for f in yt["fields"] %}
+<tr><td>{{ f["label"] }}</td>{% for v in f["values"] %}<td>{{ "%.2f"|format(v) }}</td>{% endfor %}<td><strong>{{ "%.2f"|format(f["ytd"]) }}</strong></td></tr>
+{% endfor %}
+</tbody></table>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

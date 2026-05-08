@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Database Backups</h2>
+<div class="card">
+  <div class="actions-row">
+    <a class="button-link" href="{{ url_for('download_database_backup') }}">Create and Download Backup Now</a>
+  </div>
+  <p class="muted">Automatic daily backups are stored in <strong>instance/backups</strong>.</p>
+
+  {% if backup_files %}
+  <table>
+    <thead>
+      <tr>
+        <th>Backup file</th>
+        <th>Download</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for file in backup_files %}
+      <tr>
+        <td>{{ file.name }}</td>
+        <td><a href="{{ url_for('admin_download_backup', filename=file.name) }}">Download</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No backups found yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

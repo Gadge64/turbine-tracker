@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Users</h2>
+<div class="card">
+<table><thead><tr><th>User</th><th>Turbine</th><th>Capacity</th><th>Inverter</th><th>Eircode</th><th>Entries</th><th>Total E-mon</th><th>Details</th></tr></thead><tbody>
+{% for r in rows %}
+<tr><td>{{ r.display_name }}</td><td>{{ r.turbine_model or "—" }}</td><td>{{ r.turbine_capacity_kw or "—" }}</td><td>{{ r.inverter_model or "—" }}</td><td>{{ r.eircode or "—" }}</td><td>{{ r.entry_count }}</td><td>{{ "%.2f"|format(r.total_e_mon) }}</td><td><a href="{{ url_for('user_detail', user_id=r.id) }}">View</a></td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% endblock %}

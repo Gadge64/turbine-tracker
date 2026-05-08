@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin - Users</h2>
+<div class="card">
+<table><thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Admin</th><th>Reset Password</th></tr></thead><tbody>
+{% for u in users %}
+<tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.full_name or "" }}</td><td>{% if u.is_admin %}Yes{% else %}No{% endif %}</td><td><a href="{{ url_for('admin_reset_password', user_id=u.id) }}">Reset</a></td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% endblock %}
