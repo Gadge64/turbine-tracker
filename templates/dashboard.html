@@ -63,15 +63,17 @@ metricSelect.addEventListener("change",function(){currentMetric=this.value;chart
 <div class="card">
 <h3>Monthly entries</h3>
 {% if entries %}
-<table><thead><tr><th>Year</th><th>Month</th><th>E-mon</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inverter total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th></tr></thead><tbody>
+<table><thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inv 1 total</th><th>Inv 2 total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th></tr></thead><tbody>
 {% for e in entries %}
 <tr>
 <td>{{ e.year }}</td><td>{{ e.month }}</td>
 <td>{{ "" if e.e_mon_kwh is none else "%.2f"|format(e.e_mon_kwh) }}</td>
+<td>{{ "" if e.e_mon_kwh_2 is none else "%.2f"|format(e.e_mon_kwh_2) }}</td>
 <td>{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
 <td>{{ "" if e.export_total_kwh() is none else "%.2f"|format(e.export_total_kwh()) }}</td>
 <td>{{ "" if e.used_from_wind_effective_kwh() is none else "%.2f"|format(e.used_from_wind_effective_kwh()) }}</td>
 <td>{{ "" if e.inverter_total_kwh is none else "%.2f"|format(e.inverter_total_kwh) }}</td>
+<td>{{ "" if e.inverter_total_kwh_2 is none else "%.2f"|format(e.inverter_total_kwh_2) }}</td>
 <td>{{ "" if e.value_at_tariff() is none else "%.2f"|format(e.value_at_tariff()) }}</td>
 <td>{{ "" if e.co2_kg is none else "%.2f"|format(e.co2_kg) }}</td>
 <td class="note-cell">{{ e.notes or "" }}</td><td><a href="{{ url_for('edit_entry', entry_id=e.id) }}">Edit</a></td>

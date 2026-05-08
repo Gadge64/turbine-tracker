@@ -17,7 +17,8 @@
 <div><label>Turbine model</label><input name="turbine_model" value="{{ user.turbine_model or '' }}"></div>
 <div><label>Turbine capacity (kW)</label><input type="number" step="any" name="turbine_capacity_kw" value="{{ user.turbine_capacity_kw if user.turbine_capacity_kw is not none else '' }}"></div>
 <div><label>Turbine size notes</label><input name="turbine_size_notes" value="{{ user.turbine_size_notes or '' }}"></div>
-<div><label>Inverter model</label><input name="inverter_model" value="{{ user.inverter_model or '' }}"></div>
+<div><label>Inverter 1 model</label><input name="inverter_model" value="{{ user.inverter_model or '' }}"></div>
+<div><label>Inverter 2 model</label><input name="inverter_model_2" value="{{ user.inverter_model_2 or '' }}"></div>
 <div><label>Install date</label><input type="date" name="install_date" value="{{ user.install_date or '' }}"></div>
 <div class="span-2"><label>System notes</label><textarea name="system_notes" rows="3">{{ user.system_notes or '' }}</textarea></div>
 <div class="span-2"><label>Service notes</label><textarea name="service_notes" rows="4">{{ user.service_notes or '' }}</textarea></div>

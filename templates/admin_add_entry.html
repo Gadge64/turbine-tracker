@@ -11,9 +11,11 @@
     <div><label>Import on last day (kWh)</label><input type="number" step="any" name="import_end_kwh"></div>
     <div><label>Export on 1st day (kWh)</label><input type="number" step="any" name="export_start_kwh" value="{{ default_export_start if default_export_start is not none else '' }}"></div>
     <div><label>Export on last day (kWh)</label><input type="number" step="any" name="export_end_kwh"></div>
-    <div><label>E-mon (kWh)</label><input type="number" step="any" name="e_mon_kwh"></div>
+    <div><label>E-mon 1 (kWh)</label><input type="number" step="any" name="e_mon_kwh"></div>
+    <div><label>E-mon 2 (kWh)</label><input type="number" step="any" name="e_mon_kwh_2"></div>
     <div><label>Used from wind override (kWh)</label><input type="number" step="any" name="used_from_wind_kwh"></div>
-    <div><label>Inverter Total cumulative (kWh)</label><input type="number" step="any" name="inverter_total_kwh" value="{{ default_inverter_total if default_inverter_total is not none else '' }}"><div class="muted">Leave blank to auto-calculate on save.</div></div>
+    <div><label>Inverter 1 Total cumulative (kWh)</label><input type="number" step="any" name="inverter_total_kwh" value="{{ default_inverter_total if default_inverter_total is not none else '' }}"><div class="muted">Leave blank to auto-calculate on save.</div></div>
+    <div><label>Inverter 2 Total cumulative (kWh)</label><input type="number" step="any" name="inverter_total_kwh_2" value="{{ default_inverter_total_2 if default_inverter_total_2 is not none else '' }}"><div class="muted">Leave blank to auto-calculate on save.</div></div>
     <div><label>Tariff rate</label><input type="number" step="any" name="tariff_rate" value="{{ default_tariff }}"></div>
     <div><label>CO₂ (kg)</label><input type="number" step="any" name="co2_kg"></div>
     <div class="span-2"><label>Notes</label><textarea name="notes" rows="3"></textarea></div>

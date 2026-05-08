@@ -11,6 +11,8 @@
 <tr><th>MPRN</th><td>{% if can_view_address %}{{ u.mprn or "—" }}{% else %}—{% endif %}</td></tr>
 <tr><th>Turbine</th><td>{{ u.turbine_model or "—" }}</td></tr>
 <tr><th>Capacity</th><td>{{ u.turbine_capacity_kw or "—" }}</td></tr>
+<tr><th>Inverter 1</th><td>{{ u.inverter_model or "—" }}</td></tr>
+<tr><th>Inverter 2</th><td>{{ u.inverter_model_2 or "—" }}</td></tr>
 <tr><th>Service notes</th><td class="note-cell">{{ u.service_notes or "" }}</td></tr>
 </tbody></table>
 </div>
@@ -30,15 +32,17 @@
   </div>
   {% endif %}
   {% if entries %}
-  <table><thead><tr><th>Year</th><th>Month</th><th>E-mon</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inverter total</th><th>Value</th><th>CO₂</th><th>Notes</th>{% if viewer_is_admin %}<th>Actions</th>{% endif %}</tr></thead><tbody>
+  <table><thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inv 1 total</th><th>Inv 2 total</th><th>Value</th><th>CO₂</th><th>Notes</th>{% if viewer_is_admin %}<th>Actions</th>{% endif %}</tr></thead><tbody>
   {% for e in entries %}
   <tr>
     <td>{{ e.year }}</td><td>{{ e.month }}</td>
     <td>{{ "" if e.e_mon_kwh is none else "%.2f"|format(e.e_mon_kwh) }}</td>
+    <td>{{ "" if e.e_mon_kwh_2 is none else "%.2f"|format(e.e_mon_kwh_2) }}</td>
     <td>{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
     <td>{{ "" if e.export_total_kwh() is none else "%.2f"|format(e.export_total_kwh()) }}</td>
     <td>{{ "" if e.used_from_wind_effective_kwh() is none else "%.2f"|format(e.used_from_wind_effective_kwh()) }}</td>
     <td>{{ "" if e.inverter_total_kwh is none else "%.2f"|format(e.inverter_total_kwh) }}</td>
+    <td>{{ "" if e.inverter_total_kwh_2 is none else "%.2f"|format(e.inverter_total_kwh_2) }}</td>
     <td>{{ "" if e.value_at_tariff() is none else "%.2f"|format(e.value_at_tariff()) }}</td>
     <td>{{ "" if e.co2_kg is none else "%.2f"|format(e.co2_kg) }}</td>
     <td class="note-cell">{{ e.notes or "" }}</td>

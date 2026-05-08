@@ -62,6 +62,7 @@ class User(db.Model):
     turbine_capacity_kw = db.Column(db.Float, nullable=True)
     turbine_size_notes = db.Column(db.String(200), nullable=True)
     inverter_model = db.Column(db.String(200), nullable=True)
+    inverter_model_2 = db.Column(db.String(200), nullable=True)
     install_date = db.Column(db.Date, nullable=True)
     system_notes = db.Column(db.String(500), nullable=True)
     service_notes = db.Column(db.String(1500), nullable=True)
@@ -93,7 +94,9 @@ class TurbineEntry(db.Model):
     export_end_kwh = db.Column(db.Float, nullable=True)
 
     inverter_total_kwh = db.Column(db.Float, nullable=True)
+    inverter_total_kwh_2 = db.Column(db.Float, nullable=True)
     e_mon_kwh = db.Column(db.Float, nullable=True)
+    e_mon_kwh_2 = db.Column(db.Float, nullable=True)
     co2_kg = db.Column(db.Float, nullable=True)
     used_from_wind_kwh = db.Column(db.Float, nullable=True)
     tariff_rate = db.Column(db.Float, nullable=True)
@@ -112,6 +115,15 @@ class TurbineEntry(db.Model):
     def e_mon_safe(self) -> Optional[float]:
         return None if self.e_mon_kwh is None else float(self.e_mon_kwh)
 
+    def e_mon_2_safe(self) -> Optional[float]:
+        return None if self.e_mon_kwh_2 is None else float(self.e_mon_kwh_2)
+
+    def e_mon_total_kwh(self) -> Optional[float]:
+        e1, e2 = self.e_mon_safe(), self.e_mon_2_safe()
+        if e1 is None and e2 is None:
+            return None
+        return (e1 or 0.0) + (e2 or 0.0)
+
     def co2_safe(self) -> Optional[float]:
         return None if self.co2_kg is None else float(self.co2_kg)
 
@@ -119,7 +131,7 @@ class TurbineEntry(db.Model):
         return float(self.tariff_rate) if self.tariff_rate is not None else 0.195
 
     def used_from_wind_auto_kwh(self) -> Optional[float]:
-        e_mon = self.e_mon_safe()
+        e_mon = self.e_mon_total_kwh()
         export_total = self.export_total_kwh()
         if e_mon is None or export_total is None:
             return None
@@ -131,7 +143,7 @@ class TurbineEntry(db.Model):
         return self.used_from_wind_auto_kwh()
 
     def house_total_wind_grid_kwh(self) -> Optional[float]:
-        e_mon = self.e_mon_safe()
+        e_mon = self.e_mon_total_kwh()
         export_total = self.export_total_kwh()
         import_total = self.import_total_kwh()
         if e_mon is None or export_total is None or import_total is None:
@@ -139,7 +151,7 @@ class TurbineEntry(db.Model):
         return (e_mon - export_total) + import_total
 
     def value_at_tariff(self) -> Optional[float]:
-        e_mon = self.e_mon_safe()
+        e_mon = self.e_mon_total_kwh()
         if e_mon is None:
             return None
         return e_mon * self.tariff_safe()
@@ -174,6 +186,7 @@ def ensure_user_schema_sqlite() -> None:
         "turbine_capacity_kw": "REAL",
         "turbine_size_notes": "TEXT",
         "inverter_model": "TEXT",
+        "inverter_model_2": "TEXT",
         "install_date": "DATE",
         "system_notes": "TEXT",
         "service_notes": "TEXT",
@@ -191,7 +204,9 @@ def ensure_entry_schema_sqlite() -> None:
         "notes": "TEXT",
         "used_from_wind_kwh": "REAL",
         "inverter_total_kwh": "REAL",
+        "inverter_total_kwh_2": "REAL",
         "e_mon_kwh": "REAL",
+        "e_mon_kwh_2": "REAL",
         "tariff_rate": "REAL",
         "co2_kg": "REAL",
     }
@@ -391,6 +406,15 @@ def auto_inverter_total_kwh(user_id: int, year: int, month: int, e_mon_kwh: Opti
     return float(e_mon_kwh)
 
 
+def auto_inverter_total_kwh_2(user_id: int, year: int, month: int, e_mon_kwh_2: Optional[float]) -> Optional[float]:
+    if e_mon_kwh_2 is None:
+        return None
+    prev_entry = get_previous_month_entry(user_id, year, month)
+    if prev_entry and prev_entry.inverter_total_kwh_2 is not None:
+        return float(prev_entry.inverter_total_kwh_2) + float(e_mon_kwh_2)
+    return float(e_mon_kwh_2)
+
+
 def add_months(d: datetime.date, months: int) -> datetime.date:
     y = d.year + (d.month - 1 + months) // 12
     m = (d.month - 1 + months) % 12 + 1
@@ -484,11 +508,13 @@ def dashboard():
         return [None if v is None else float(v) for v in vals]
 
     chart_data = {
-        "E-mon (kWh)": series([e.e_mon_safe() for e in entries]),
+        "E-mon 1 (kWh)": series([e.e_mon_safe() for e in entries]),
+        "E-mon 2 (kWh)": series([e.e_mon_2_safe() for e in entries]),
         "Import total (kWh)": series([e.import_total_kwh() for e in entries]),
         "Export total (kWh)": series([e.export_total_kwh() for e in entries]),
         "Used from wind (kWh)": series([e.used_from_wind_effective_kwh() for e in entries]),
-        "Inverter total (kWh)": series([e.inverter_total_kwh for e in entries]),
+        "Inverter 1 total (kWh)": series([e.inverter_total_kwh for e in entries]),
+        "Inverter 2 total (kWh)": series([e.inverter_total_kwh_2 for e in entries]),
         "House total (Wind & Grid)": series([e.house_total_wind_grid_kwh() for e in entries]),
         "Value @ tariff": series([e.value_at_tariff() for e in entries]),
         "CO₂ (kg)": series([e.co2_safe() for e in entries]),
@@ -519,9 +545,11 @@ def dashboard():
             {"label": "Import total (kWh)", "values": month_values(lambda e: e.import_total_kwh())},
             {"label": "Export total (kWh)", "values": month_values(lambda e: e.export_total_kwh())},
             {"label": "Used from wind (kWh)", "values": month_values(lambda e: e.used_from_wind_effective_kwh())},
-            {"label": "Inverter total (kWh)", "values": month_values(lambda e: e.inverter_total_kwh)},
+            {"label": "E-mon 1 (kWh)", "values": month_values(lambda e: e.e_mon_safe())},
+            {"label": "E-mon 2 (kWh)", "values": month_values(lambda e: e.e_mon_2_safe())},
+            {"label": "Inverter 1 total (kWh)", "values": month_values(lambda e: e.inverter_total_kwh)},
+            {"label": "Inverter 2 total (kWh)", "values": month_values(lambda e: e.inverter_total_kwh_2)},
             {"label": "House total (Wind & Grid)", "values": month_values(lambda e: e.house_total_wind_grid_kwh())},
-            {"label": "E-mon (kWh)", "values": month_values(lambda e: e.e_mon_safe())},
             {"label": "Value @ tariff", "values": month_values(lambda e: e.value_at_tariff())},
             {"label": "CO₂ (kg)", "values": month_values(lambda e: e.co2_safe())},
         ]
@@ -569,6 +597,7 @@ def add_entry():
             default_export_start=prev_entry.export_end_kwh if prev_entry and prev_entry.export_end_kwh is not None else None,
             default_tariff=prev_entry.tariff_safe() if prev_entry else 0.195,
             default_inverter_total=prev_entry.inverter_total_kwh if prev_entry and prev_entry.inverter_total_kwh is not None else None,
+            default_inverter_total_2=prev_entry.inverter_total_kwh_2 if prev_entry and prev_entry.inverter_total_kwh_2 is not None else None,
         )
 
     year = parse_int_field(request.form, "year", "Year", required=True)
@@ -581,8 +610,10 @@ def add_entry():
         flash(f"Entry already exists for {year}-{month:02d}.", "danger")
         return redirect(url_for("dashboard"))
 
-    e_mon = parse_float_field(request.form, "e_mon_kwh", "E-mon")
-    inverter_manual = parse_float_field(request.form, "inverter_total_kwh", "Inverter total")
+    e_mon = parse_float_field(request.form, "e_mon_kwh", "E-mon 1")
+    e_mon_2 = parse_float_field(request.form, "e_mon_kwh_2", "E-mon 2")
+    inverter_manual = parse_float_field(request.form, "inverter_total_kwh", "Inverter 1 total")
+    inverter_manual_2 = parse_float_field(request.form, "inverter_total_kwh_2", "Inverter 2 total")
     entry = TurbineEntry(
         user_id=user.id,
         year=year,
@@ -594,7 +625,9 @@ def add_entry():
         export_end_kwh=parse_float_field(request.form, "export_end_kwh"),
         used_from_wind_kwh=parse_float_field(request.form, "used_from_wind_kwh"),
         inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(user.id, year, month, e_mon),
+        inverter_total_kwh_2=inverter_manual_2 if inverter_manual_2 is not None else auto_inverter_total_kwh_2(user.id, year, month, e_mon_2),
         e_mon_kwh=e_mon,
+        e_mon_kwh_2=e_mon_2,
         tariff_rate=parse_float_field(request.form, "tariff_rate"),
         co2_kg=parse_float_field(request.form, "co2_kg"),
         notes=(request.form.get("notes") or "").strip() or None,
@@ -626,7 +659,9 @@ def edit_entry(entry_id: int):
             return render_template("edit_entry.html", entry=entry)
 
         e_mon = parse_float_field(request.form, "e_mon_kwh")
+        e_mon_2 = parse_float_field(request.form, "e_mon_kwh_2")
         inverter_manual = parse_float_field(request.form, "inverter_total_kwh")
+        inverter_manual_2 = parse_float_field(request.form, "inverter_total_kwh_2")
 
         entry.year = year
         entry.month = month
@@ -637,7 +672,9 @@ def edit_entry(entry_id: int):
         entry.export_end_kwh = parse_float_field(request.form, "export_end_kwh")
         entry.used_from_wind_kwh = parse_float_field(request.form, "used_from_wind_kwh")
         entry.inverter_total_kwh = inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(user.id, year, month, e_mon)
+        entry.inverter_total_kwh_2 = inverter_manual_2 if inverter_manual_2 is not None else auto_inverter_total_kwh_2(user.id, year, month, e_mon_2)
         entry.e_mon_kwh = e_mon
+        entry.e_mon_kwh_2 = e_mon_2
         entry.tariff_rate = parse_float_field(request.form, "tariff_rate")
         entry.co2_kg = parse_float_field(request.form, "co2_kg")
         entry.notes = (request.form.get("notes") or "").strip() or None
@@ -687,6 +724,7 @@ def edit_profile():
         user.turbine_capacity_kw = parse_float_field(request.form, "turbine_capacity_kw")
         user.turbine_size_notes = (request.form.get("turbine_size_notes") or "").strip() or None
         user.inverter_model = (request.form.get("inverter_model") or "").strip() or None
+        user.inverter_model_2 = (request.form.get("inverter_model_2") or "").strip() or None
         user.install_date = parse_date_yyyy_mm_dd(request.form.get("install_date") or "")
         user.system_notes = (request.form.get("system_notes") or "").strip() or None
         user.service_notes = (request.form.get("service_notes") or "").strip() or None
@@ -811,9 +849,11 @@ def export_csv():
     writer = csv.writer(buffer)
     writer.writerow([
         "year", "month", "import_start_kwh", "import_end_kwh", "import_total_kwh",
-        "export_start_kwh", "export_end_kwh", "export_total_kwh", "e_mon_kwh",
+        "export_start_kwh", "export_end_kwh", "export_total_kwh",
+        "e_mon_kwh", "e_mon_kwh_2",
         "used_from_wind_kwh_effective", "used_from_wind_kwh_override",
-        "inverter_total_kwh", "house_total_wind_grid_kwh", "tariff_rate",
+        "inverter_total_kwh", "inverter_total_kwh_2",
+        "house_total_wind_grid_kwh", "tariff_rate",
         "value_at_tariff", "co2_kg", "notes",
     ])
     for e in entries:
@@ -822,9 +862,10 @@ def export_csv():
             e.import_total_kwh() if e.import_total_kwh() is not None else "",
             e.export_start_kwh or "", e.export_end_kwh or "",
             e.export_total_kwh() if e.export_total_kwh() is not None else "",
-            e.e_mon_kwh or "",
+            e.e_mon_kwh or "", e.e_mon_kwh_2 or "",
             e.used_from_wind_effective_kwh() if e.used_from_wind_effective_kwh() is not None else "",
-            e.used_from_wind_kwh or "", e.inverter_total_kwh or "",
+            e.used_from_wind_kwh or "",
+            e.inverter_total_kwh or "", e.inverter_total_kwh_2 or "",
             e.house_total_wind_grid_kwh() if e.house_total_wind_grid_kwh() is not None else "",
             e.tariff_rate or "", e.value_at_tariff() if e.value_at_tariff() is not None else "",
             e.co2_kg or "", e.notes or "",
@@ -843,8 +884,10 @@ def import_csv_template():
     writer = csv.writer(buffer)
     writer.writerow([
         "year", "month", "import_start_kwh", "import_end_kwh",
-        "export_start_kwh", "export_end_kwh", "e_mon_kwh",
-        "used_from_wind_kwh_override", "inverter_total_kwh",
+        "export_start_kwh", "export_end_kwh",
+        "e_mon_kwh", "e_mon_kwh_2",
+        "used_from_wind_kwh_override",
+        "inverter_total_kwh", "inverter_total_kwh_2",
         "tariff_rate", "co2_kg", "notes",
     ])
     return Response(
@@ -914,7 +957,9 @@ def import_csv():
                 return None
 
         e_mon = col("e_mon_kwh")
+        e_mon_2 = col("e_mon_kwh_2")
         inverter_manual = col("inverter_total_kwh")
+        inverter_manual_2 = col("inverter_total_kwh_2")
         entry = TurbineEntry(
             user_id=target_user.id,
             year=year,
@@ -926,6 +971,8 @@ def import_csv():
             export_end_kwh=col("export_end_kwh"),
             used_from_wind_kwh=col("used_from_wind_kwh_override") or col("used_from_wind_kwh"),
             inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(target_user.id, year, month, e_mon),
+            inverter_total_kwh_2=inverter_manual_2 if inverter_manual_2 is not None else auto_inverter_total_kwh_2(target_user.id, year, month, e_mon_2),
+            e_mon_kwh_2=e_mon_2,
             e_mon_kwh=e_mon,
             tariff_rate=col("tariff_rate"),
             co2_kg=col("co2_kg"),
@@ -1088,6 +1135,7 @@ def admin_add_entry(user_id: int):
             default_export_start=prev_entry.export_end_kwh if prev_entry and prev_entry.export_end_kwh is not None else None,
             default_tariff=prev_entry.tariff_safe() if prev_entry else 0.195,
             default_inverter_total=prev_entry.inverter_total_kwh if prev_entry and prev_entry.inverter_total_kwh is not None else None,
+            default_inverter_total_2=prev_entry.inverter_total_kwh_2 if prev_entry and prev_entry.inverter_total_kwh_2 is not None else None,
         )
 
     year = parse_int_field(request.form, "year", "Year", required=True)
@@ -1100,8 +1148,10 @@ def admin_add_entry(user_id: int):
         flash(f"Entry already exists for {year}-{month:02d}.", "danger")
         return redirect(url_for("user_detail", user_id=user_id))
 
-    e_mon = parse_float_field(request.form, "e_mon_kwh", "E-mon")
-    inverter_manual = parse_float_field(request.form, "inverter_total_kwh", "Inverter total")
+    e_mon = parse_float_field(request.form, "e_mon_kwh", "E-mon 1")
+    e_mon_2 = parse_float_field(request.form, "e_mon_kwh_2", "E-mon 2")
+    inverter_manual = parse_float_field(request.form, "inverter_total_kwh", "Inverter 1 total")
+    inverter_manual_2 = parse_float_field(request.form, "inverter_total_kwh_2", "Inverter 2 total")
     entry = TurbineEntry(
         user_id=target_user.id,
         year=year,
@@ -1113,7 +1163,9 @@ def admin_add_entry(user_id: int):
         export_end_kwh=parse_float_field(request.form, "export_end_kwh"),
         used_from_wind_kwh=parse_float_field(request.form, "used_from_wind_kwh"),
         inverter_total_kwh=inverter_manual if inverter_manual is not None else auto_inverter_total_kwh(target_user.id, year, month, e_mon),
+        inverter_total_kwh_2=inverter_manual_2 if inverter_manual_2 is not None else auto_inverter_total_kwh_2(target_user.id, year, month, e_mon_2),
         e_mon_kwh=e_mon,
+        e_mon_kwh_2=e_mon_2,
         tariff_rate=parse_float_field(request.form, "tariff_rate"),
         co2_kg=parse_float_field(request.form, "co2_kg"),
         notes=(request.form.get("notes") or "").strip() or None,
