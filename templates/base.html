@@ -6,59 +6,224 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,sans-serif;background:#f9fafb;color:#111827}
-    header{background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:5}
-    .container{max-width:1200px;margin:0 auto;padding:16px}
-    nav{display:flex;gap:10px;flex-wrap:wrap}
-    nav a,.button-link,button{display:inline-flex;align-items:center;padding:9px 12px;border-radius:10px;text-decoration:none;font-weight:700}
-    nav a{color:#111827}
-    nav a:hover{background:#f3f4f6}
-    button,.button-link{background:#111827;color:white;border:1px solid #111827;cursor:pointer}
-    .btn-secondary{background:#fff;color:#111827;border:1px solid #d1d5db}
-    .btn-danger{background:#991b1b;border-color:#991b1b}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:16px;margin:14px 0}
-    .stack>*+*{margin-top:12px}
-    .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
-    .form-grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media(min-width:900px){.form-grid.two{grid-template-columns:1fr 1fr}}
-    .span-2{grid-column:1/-1}
-    label{display:block;font-weight:700;margin-bottom:6px}
-    input,textarea,select{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px}
-    table{width:100%;border-collapse:collapse;background:#fff;margin:12px 0}
-    th,td{border:1px solid #e5e7eb;padding:9px;text-align:left;vertical-align:top}
-    th{background:#f3f4f6}
-    .muted{color:#6b7280;font-size:.92rem}
-    .flash{padding:12px;border-radius:10px;margin:12px 0;border:1px solid #e5e7eb;background:#fff}
-    .success{background:#f0fdf4;border-color:#86efac}.danger{background:#fef2f2;border-color:#fca5a5}.info{background:#eff6ff;border-color:#93c5fd}
-    .note-cell{max-width:380px;white-space:pre-wrap;word-break:break-word}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #1e293b;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .header-inner {
+      max-width: 1280px; margin: 0 auto;
+      padding: 0 16px;
+      display: flex; align-items: center; height: 56px; gap: 12px;
+    }
+    .site-brand {
+      color: #f8fafc; font-weight: 800; font-size: 1rem;
+      text-decoration: none; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap;
+    }
+    .site-brand svg { flex-shrink: 0; }
+
+    /* ── Nav ── */
+    .nav-links {
+      display: flex; align-items: center; gap: 2px;
+      flex: 1; flex-wrap: nowrap; overflow: hidden;
+    }
+    .nav-links a {
+      color: #94a3b8; text-decoration: none;
+      padding: 6px 10px; border-radius: 8px;
+      font-size: .85rem; font-weight: 500;
+      white-space: nowrap;
+      transition: background .15s, color .15s;
+    }
+    .nav-links a:hover { background: rgba(255,255,255,.1); color: #f8fafc; }
+    .nav-links a.nav-active { background: rgba(255,255,255,.12); color: #f8fafc; }
+    .nav-sep { width: 1px; background: rgba(255,255,255,.12); height: 20px; margin: 0 4px; flex-shrink: 0; }
+
+    /* ── Hamburger ── */
+    .nav-toggle {
+      display: none; background: none; border: none;
+      color: #f8fafc; cursor: pointer; padding: 6px;
+      margin-left: auto; border-radius: 8px;
+      transition: background .15s;
+    }
+    .nav-toggle:hover { background: rgba(255,255,255,.1); }
+    .nav-toggle svg { display: block; }
+
+    /* ── Mobile nav dropdown ── */
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+        position: absolute; top: 56px; left: 0; right: 0;
+        background: #1e293b;
+        flex-direction: column; align-items: stretch;
+        padding: 10px 12px 14px;
+        border-top: 1px solid rgba(255,255,255,.08);
+        box-shadow: 0 6px 20px rgba(0,0,0,.3);
+        gap: 2px;
+        max-height: calc(100vh - 56px);
+        overflow-y: auto;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 11px 14px; font-size: .95rem; border-radius: 10px; }
+      .nav-sep { width: 100%; height: 1px; margin: 6px 0; }
+      .nav-toggle { display: flex; align-items: center; justify-content: center; }
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 20px 16px; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Buttons ── */
+    .button-link, button {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 10px;
+      font-weight: 600; font-size: .85rem;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: background .15s, box-shadow .15s, transform .1s;
+      white-space: nowrap; line-height: 1.4;
+    }
+    .button-link:active, button:active { transform: scale(.97); }
+    .button-link, button:not(.btn-secondary):not(.btn-danger) {
+      background: #1e293b; color: #f8fafc;
+    }
+    .button-link:hover, button:not(.btn-secondary):not(.btn-danger):hover {
+      background: #334155; color: #f8fafc;
+    }
+    .btn-secondary {
+      background: #f8fafc; color: #1e293b;
+      border: 1.5px solid #e2e8f0;
+    }
+    .btn-secondary:hover { background: #f1f5f9; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+
+    /* ── Actions row ── */
+    .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+
+    /* ── Form grid ── */
+    .form-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 640px) { .form-grid.two { grid-template-columns: 1fr 1fr; } }
+    .span-2 { grid-column: 1 / -1; }
+
+    label { display: block; font-weight: 600; font-size: .85rem; color: #374151; margin-bottom: 5px; }
+
+    input, textarea, select {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #e2e8f0; border-radius: 10px;
+      font-size: .9rem; background: #fff; color: #0f172a;
+      font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none; border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; margin: 10px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { border: 1px solid #e2e8f0; padding: 9px 11px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; font-weight: 600; color: #374151; white-space: nowrap; }
+    tbody tr:hover td { background: #f8fafc; }
+
+    /* ── Flash messages ── */
+    .flash {
+      padding: 12px 16px; border-radius: 12px;
+      margin: 0 0 14px; font-size: .9rem; border: 1.5px solid;
+    }
+    .success { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .danger   { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+    .info     { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+    .warning  { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+
+    /* ── Typography ── */
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 10px; }
+    h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 16px; color: #0f172a; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 12px; }
+    h4 { font-size: .95rem; font-weight: 700; margin: 14px 0 8px; }
+    p  { margin-bottom: 8px; }
+    .muted { color: #64748b; font-size: .85rem; }
+    .note-cell { max-width: 300px; white-space: pre-wrap; word-break: break-word; }
+
+    /* ── Mobile table scroll ── */
+    @media (max-width: 768px) {
+      .card { padding: 14px; border-radius: 12px; }
+      table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      h2 { font-size: 1.2rem; }
+    }
   </style>
 </head>
 <body>
 <header>
-  <div class="container">
-    <nav>
-      <a href="{{ url_for('home') }}">Home</a>
+  <div class="header-inner">
+    <a class="site-brand" href="{{ url_for('home') }}">
+      <svg width="22" height="22" viewBox="0 0 120 210" xmlns="http://www.w3.org/2000/svg" style="opacity:.9">
+        <polygon points="51,200 69,200 64,90 56,90" fill="#94a3b8"/>
+        <rect x="55" y="83" width="22" height="10" rx="3" fill="#64748b"/>
+        <g transform="translate(60,88)">
+          <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1"/>
+          <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1" transform="rotate(120)"/>
+          <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1" transform="rotate(240)"/>
+          <circle r="5" fill="#475569"/>
+        </g>
+      </svg>
+      Turbine Tracker
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <line x1="3" y1="6"  x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <nav class="nav-links" id="mainNav">
       {% if session.get('user_id') %}
-        <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('add_entry') }}">Add Entry</a>
-        <a href="{{ url_for('compare') }}">Compare</a>
-        <a href="{{ url_for('community') }}">Community</a>
-        <a href="{{ url_for('users') }}">Users</a>
-        <a href="{{ url_for('profile') }}">Profile</a>
-        <a href="{{ url_for('download_database_backup') }}">Download Backup</a>
+        <a href="{{ url_for('dashboard') }}"  class="{{ 'nav-active' if request.endpoint == 'dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('add_entry') }}"  class="{{ 'nav-active' if request.endpoint == 'add_entry' }}">Add Entry</a>
+        <a href="{{ url_for('compare') }}"    class="{{ 'nav-active' if request.endpoint == 'compare' }}">Compare</a>
+        <a href="{{ url_for('community') }}"  class="{{ 'nav-active' if request.endpoint == 'community' }}">Community</a>
+        <a href="{{ url_for('users') }}"      class="{{ 'nav-active' if request.endpoint == 'users' }}">Members</a>
+        <a href="{{ url_for('profile') }}"    class="{{ 'nav-active' if request.endpoint in ['profile','edit_profile'] }}">Profile</a>
+        <a href="{{ url_for('download_database_backup') }}" class="btn-secondary" style="font-size:.8rem;padding:5px 10px">Backup</a>
         {% if nav_user and nav_user.is_admin %}
-        <a href="{{ url_for('admin_users') }}">Admin</a>
-        <a href="{{ url_for('admin_backups') }}">Backups</a>
+          <div class="nav-sep"></div>
+          <a href="{{ url_for('admin_users') }}"   class="{{ 'nav-active' if 'admin' in request.endpoint }}">Admin</a>
+          <a href="{{ url_for('admin_backups') }}">Backups</a>
         {% endif %}
-        <a href="{{ url_for('logout') }}">Logout</a>
+        <div class="nav-sep"></div>
+        <a href="{{ url_for('logout') }}" style="color:#f87171">Logout</a>
       {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
-        <a href="{{ url_for('register') }}">Register</a>
+        <a href="{{ url_for('login') }}"    class="{{ 'nav-active' if request.endpoint == 'login' }}">Login</a>
+        <a href="{{ url_for('register') }}" class="{{ 'nav-active' if request.endpoint == 'register' }}">Register</a>
       {% endif %}
     </nav>
   </div>
 </header>
+
 <main class="container">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -69,5 +234,18 @@
   {% endwith %}
   {% block content %}{% endblock %}
 </main>
+
+<script>
+  const toggle = document.getElementById('navToggle');
+  const nav    = document.getElementById('mainNav');
+  toggle.addEventListener('click', function() {
+    nav.classList.toggle('open');
+  });
+  document.addEventListener('click', function(e) {
+    if (!nav.contains(e.target) && !toggle.contains(e.target)) {
+      nav.classList.remove('open');
+    }
+  });
+</script>
 </body>
 </html>
