@@ -10,10 +10,67 @@
 </div>
 {% if date_labels %}
 <div class="card">
-<label>Metric</label><select id="metric-select">{% for m in metric_labels %}<option value="{{ m }}" {% if m == default_metric %}selected{% endif %}>{{ m }}</option>{% endfor %}</select>
-<div style="height:360px"><canvas id="compareChart"></canvas></div>
+<div class="form-grid two" style="margin-bottom:12px">
+  <div><label>Metric</label><select id="metric-select">{% for m in metric_labels %}<option value="{{ m }}" {% if m == default_metric %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
+  <div><label>Period</label><select id="year-select"><option value="">All time</option></select></div>
+</div>
+<div style="height:400px"><canvas id="compareChart"></canvas></div>
 <script>
-document.addEventListener("DOMContentLoaded",function(){if(typeof Chart==="undefined")return;const labels={{ date_labels|tojson }};const datasetsByMetric={{ datasets_by_metric|tojson }};const sel=document.getElementById("metric-select");function ds(metric){return(datasetsByMetric[metric]||[]).map(d=>({label:d.label,data:d.data,fill:false,tension:.2,spanGaps:false}))}let chart=new Chart(document.getElementById("compareChart"),{type:"line",data:{labels:labels,datasets:ds(sel.value)},options:{responsive:true,maintainAspectRatio:false}});sel.addEventListener("change",function(){chart.data.datasets=ds(this.value);chart.update()});});
+document.addEventListener("DOMContentLoaded",function(){
+if(typeof Chart==="undefined")return;
+const labels={{ date_labels|tojson }};
+const datasetsByMetric={{ datasets_by_metric|tojson }};
+const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const palette=[
+  "#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#0891b2","#be185d",
+  "#65a30d","#ea580c","#0d9488","#6d28d9","#b45309","#0369a1","#15803d",
+  "#9f1239","#1e40af","#064e3b","#78350f","#4c1d95","#134e4a"
+];
+const allUsers=[...new Set(Object.values(datasetsByMetric).flat().map(d=>d.label))];
+const colorMap={};
+allUsers.forEach((name,i)=>colorMap[name]=palette[i%palette.length]);
+
+const years=[...new Set(labels.map(l=>l.substring(0,4)))].sort();
+const yearSel=document.getElementById("year-select");
+years.forEach(y=>{const o=document.createElement("option");o.value=y;o.textContent=y;yearSel.appendChild(o);});
+
+function getFiltered(year){
+  if(!year)return{filtLabels:labels,indices:labels.map((_,i)=>i)};
+  const indices=[];
+  labels.forEach((l,i)=>{if(l.startsWith(year+"-"))indices.push(i);});
+  const filtLabels=indices.map(i=>monthNames[parseInt(labels[i].substring(5,7))-1]);
+  return{filtLabels,indices};
+}
+
+function buildDatasets(metric,year){
+  const{filtLabels,indices}=getFiltered(year);
+  const datasets=(datasetsByMetric[metric]||[]).map(d=>({
+    label:d.label,
+    data:indices.map(i=>d.data[i]),
+    fill:false,tension:.2,spanGaps:false,
+    borderColor:colorMap[d.label],
+    backgroundColor:colorMap[d.label],
+  }));
+  return{filtLabels,datasets};
+}
+
+const metricSel=document.getElementById("metric-select");
+let init=buildDatasets(metricSel.value,yearSel.value);
+let chart=new Chart(document.getElementById("compareChart"),{
+  type:"line",
+  data:{labels:init.filtLabels,datasets:init.datasets},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"}}}
+});
+
+function updateChart(){
+  const{filtLabels,datasets}=buildDatasets(metricSel.value,yearSel.value);
+  chart.data.labels=filtLabels;
+  chart.data.datasets=datasets;
+  chart.update();
+}
+metricSel.addEventListener("change",updateChart);
+yearSel.addEventListener("change",updateChart);
+});
 </script>
 </div>
 {% endif %}

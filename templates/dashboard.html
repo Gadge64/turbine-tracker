@@ -107,11 +107,12 @@ metricSel.addEventListener("change",function(){chart.data.datasets=buildDatasets
 <div class="card">
 <h3>Monthly entries</h3>
 {% if entries %}
+{% set month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] %}
 <table><thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inv 1 total</th><th>Inv 2 total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th><th></th></tr></thead><tbody>
 {% for e in entries %}
 {% set warns = entry_warnings.get(e.id, []) %}
 <tr{% if warns %} style="background:#fffbeb"{% endif %}>
-<td>{{ e.year }}</td><td>{{ e.month }}</td>
+<td>{{ e.year }}</td><td>{{ month_names[e.month - 1] }}</td>
 <td>{{ "" if e.e_mon_kwh is none else "%.2f"|format(e.e_mon_kwh) }}</td>
 <td>{{ "" if e.e_mon_kwh_2 is none else "%.2f"|format(e.e_mon_kwh_2) }}</td>
 <td>{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
@@ -133,7 +134,7 @@ metricSel.addEventListener("change",function(){chart.data.datasets=buildDatasets
 <div class="card"><h3>Year breakdown</h3>
 {% for yt in year_tables %}
 <h4>{{ yt["year"] }}</h4>
-<table><thead><tr><th>Field</th>{% for m in range(1,13) %}<th>{{ m }}</th>{% endfor %}<th>YTD</th></tr></thead><tbody>
+<table><thead><tr><th>Field</th>{% for m in ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] %}<th>{{ m }}</th>{% endfor %}<th>YTD</th></tr></thead><tbody>
 {% for f in yt["fields"] %}
 <tr><td>{{ f["label"] }}</td>{% for v in f["values"] %}<td>{{ "%.2f"|format(v) }}</td>{% endfor %}<td><strong>{{ "%.2f"|format(f["ytd"]) }}</strong></td></tr>
 {% endfor %}
