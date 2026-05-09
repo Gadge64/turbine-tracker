@@ -440,6 +440,70 @@ def compute_pie_kwh(entries: List[TurbineEntry]) -> Dict[str, float]:
     }
 
 
+MONTH_ABBRS: List[str] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def compute_missing_months(entries: List[TurbineEntry], install_date: Optional[datetime.date]) -> List[str]:
+    today = datetime.date.today()
+    current_month = datetime.date(today.year, today.month, 1)
+
+    if not entries and not install_date:
+        return []
+
+    if entries:
+        oldest = min(entries, key=lambda e: (e.year, e.month))
+        start = datetime.date(oldest.year, oldest.month, 1)
+    else:
+        start = datetime.date(install_date.year, install_date.month, 1)
+
+    if install_date:
+        candidate = datetime.date(install_date.year, install_date.month, 1)
+        if candidate < start:
+            start = candidate
+
+    entry_months = {(e.year, e.month) for e in entries}
+    missing = []
+    cur = start
+    while cur <= current_month:
+        if (cur.year, cur.month) not in entry_months:
+            missing.append(f"{MONTH_ABBRS[cur.month - 1]} {cur.year}")
+        cur = add_months(cur, 1)
+    return missing
+
+
+def compute_entry_warnings(entries: List[TurbineEntry]) -> Dict[int, List[str]]:
+    warnings: Dict[int, List[str]] = {}
+
+    for e in entries:
+        w: List[str] = []
+        e_mon = e.e_mon_total_kwh()
+        export = e.export_total_kwh()
+        imp = e.import_total_kwh()
+
+        if e_mon is not None and e_mon < 0:
+            w.append("Negative E-mon")
+        if export is not None and export < 0:
+            w.append("Negative export")
+        if imp is not None and imp < 0:
+            w.append("Negative import")
+        if e_mon is not None and export is not None and e_mon >= 0 and export > e_mon:
+            w.append("Export > generation")
+        if w:
+            warnings[e.id] = w
+
+    sorted_entries = sorted(entries, key=lambda e: (e.year, e.month))
+    for i, e in enumerate(sorted_entries[1:], 1):
+        prev = sorted_entries[i - 1]
+        py, pm = prev_year_month(e.year, e.month)
+        if prev.year == py and prev.month == pm:
+            curr_mon = e.e_mon_total_kwh()
+            prev_mon = prev.e_mon_total_kwh()
+            if curr_mon is not None and prev_mon is not None and prev_mon > 0 and curr_mon > prev_mon * 4:
+                warnings.setdefault(e.id, []).append("E-mon 4× prior month")
+
+    return warnings
+
+
 @app.before_request
 def backup_once_per_day_before_request() -> None:
     create_daily_backup()
@@ -560,6 +624,43 @@ def dashboard():
             f["ytd"] = sum(f["values"])
         year_tables.append({"year": year, "fields": fields})
 
+    # Lifetime summary
+    lifetime_e_mon = safe_sum([e.e_mon_total_kwh() for e in entries])
+    lifetime_value = safe_sum([e.value_at_tariff() for e in entries])
+    lifetime_co2 = safe_sum([e.co2_safe() for e in entries])
+    lifetime_export = safe_sum([e.export_total_kwh() for e in entries])
+    lifetime_import = safe_sum([e.import_total_kwh() for e in entries])
+
+    if entries:
+        oldest = min(entries, key=lambda e: (e.year, e.month))
+        since_date: Optional[str] = f"{MONTH_ABBRS[oldest.month - 1]} {oldest.year}"
+    elif user.install_date:
+        since_date = user.install_date.strftime("%b %Y")
+    else:
+        since_date = None
+
+    missing_months = compute_missing_months(entries, user.install_date)
+    entry_warnings = compute_entry_warnings(entries)
+
+    yoy_metric_fns = [
+        ("E-mon (kWh)", lambda e: e.e_mon_total_kwh()),
+        ("Import (kWh)", lambda e: e.import_total_kwh()),
+        ("Export (kWh)", lambda e: e.export_total_kwh()),
+        ("Used from wind (kWh)", lambda e: e.used_from_wind_effective_kwh()),
+        ("Value (€)", lambda e: e.value_at_tariff()),
+    ]
+    yoy_datasets: Dict[str, Any] = {}
+    for metric_name, fn in yoy_metric_fns:
+        yoy_datasets[metric_name] = {}
+        for yr in years:
+            by_month = {e.month: e for e in entries if e.year == yr}
+            monthly = []
+            for m in range(1, 13):
+                ent = by_month.get(m)
+                val = fn(ent) if ent is not None else None
+                monthly.append(float(val) if val is not None else None)
+            yoy_datasets[metric_name][str(yr)] = monthly
+
     return render_template(
         "dashboard.html",
         user=user,
@@ -573,6 +674,17 @@ def dashboard():
         pie_12m_kwh=pie_12m_kwh,
         pie_all_kwh=pie_all_kwh,
         pie_last12_start=start_12m.isoformat(),
+        lifetime_e_mon=lifetime_e_mon,
+        lifetime_value=lifetime_value,
+        lifetime_co2=lifetime_co2,
+        lifetime_export=lifetime_export,
+        lifetime_import=lifetime_import,
+        since_date=since_date,
+        missing_months=missing_months,
+        entry_warnings=entry_warnings,
+        years=years,
+        yoy_datasets=yoy_datasets,
+        yoy_metric_labels=[m[0] for m in yoy_metric_fns],
     )
 
 
@@ -1206,6 +1318,120 @@ def admin_add_entry(user_id: int):
     db.session.commit()
     flash(f"Entry saved for {user_display_name(target_user)}.", "success")
     return redirect(url_for("user_detail", user_id=user_id))
+
+
+@app.route("/community")
+@login_required
+def community():
+    all_users = User.query.order_by(User.username.asc()).all()
+    all_entries = TurbineEntry.query.all()
+
+    today = datetime.date.today()
+    year_start = datetime.date(today.year, 1, 1)
+
+    total_e_mon = safe_sum([e.e_mon_total_kwh() for e in all_entries])
+    total_export = safe_sum([e.export_total_kwh() for e in all_entries])
+    total_import = safe_sum([e.import_total_kwh() for e in all_entries])
+    total_co2 = safe_sum([e.co2_safe() for e in all_entries])
+    total_value = safe_sum([e.value_at_tariff() for e in all_entries])
+
+    ytd_entries = [e for e in all_entries if e.date >= year_start]
+    ytd_e_mon = safe_sum([e.e_mon_total_kwh() for e in ytd_entries])
+    ytd_export = safe_sum([e.export_total_kwh() for e in ytd_entries])
+    ytd_co2 = safe_sum([e.co2_safe() for e in ytd_entries])
+    ytd_value = safe_sum([e.value_at_tariff() for e in ytd_entries])
+
+    user_stats = []
+    for u in all_users:
+        u_entries = [e for e in all_entries if e.user_id == u.id]
+        u_ytd = [e for e in u_entries if e.date >= year_start]
+        user_stats.append({
+            "id": u.id,
+            "display_name": user_display_name(u),
+            "turbine_model": u.turbine_model,
+            "turbine_capacity_kw": u.turbine_capacity_kw,
+            "install_date": u.install_date,
+            "total_e_mon": safe_sum([e.e_mon_total_kwh() for e in u_entries]),
+            "total_export": safe_sum([e.export_total_kwh() for e in u_entries]),
+            "total_import": safe_sum([e.import_total_kwh() for e in u_entries]),
+            "total_co2": safe_sum([e.co2_safe() for e in u_entries]),
+            "total_value": safe_sum([e.value_at_tariff() for e in u_entries]),
+            "ytd_e_mon": safe_sum([e.e_mon_total_kwh() for e in u_ytd]),
+            "entry_count": len(u_entries),
+        })
+
+    return render_template(
+        "community.html",
+        total_e_mon=total_e_mon,
+        total_export=total_export,
+        total_import=total_import,
+        total_co2=total_co2,
+        total_value=total_value,
+        ytd_e_mon=ytd_e_mon,
+        ytd_export=ytd_export,
+        ytd_co2=ytd_co2,
+        ytd_value=ytd_value,
+        user_stats=user_stats,
+        user_emon_labels=[s["display_name"] for s in user_stats],
+        user_emon_values=[s["total_e_mon"] for s in user_stats],
+        current_year=today.year,
+    )
+
+
+@app.route("/report")
+@login_required
+def print_report():
+    user = get_current_user()
+    today = datetime.date.today()
+    year = parse_int_field(request.args, "year") or today.year
+
+    all_entries = TurbineEntry.query.filter_by(user_id=user.id).order_by(
+        TurbineEntry.year.asc(), TurbineEntry.month.asc()
+    ).all()
+    year_entries = [e for e in all_entries if e.year == year]
+    by_month = {e.month: e for e in year_entries}
+
+    month_rows = []
+    for m in range(1, 13):
+        e = by_month.get(m)
+        month_rows.append({
+            "month_name": MONTH_ABBRS[m - 1],
+            "e_mon": e.e_mon_total_kwh() if e else None,
+            "import_total": e.import_total_kwh() if e else None,
+            "export_total": e.export_total_kwh() if e else None,
+            "used_from_wind": e.used_from_wind_effective_kwh() if e else None,
+            "value": e.value_at_tariff() if e else None,
+            "co2": e.co2_safe() if e else None,
+            "notes": (e.notes or "") if e else "",
+            "has_data": e is not None,
+        })
+
+    year_totals = {
+        "e_mon": safe_sum([e.e_mon_total_kwh() for e in year_entries]),
+        "import_total": safe_sum([e.import_total_kwh() for e in year_entries]),
+        "export_total": safe_sum([e.export_total_kwh() for e in year_entries]),
+        "used_from_wind": safe_sum([e.used_from_wind_effective_kwh() for e in year_entries]),
+        "value": safe_sum([e.value_at_tariff() for e in year_entries]),
+        "co2": safe_sum([e.co2_safe() for e in year_entries]),
+    }
+
+    lifetime_totals = {
+        "e_mon": safe_sum([e.e_mon_total_kwh() for e in all_entries]),
+        "export": safe_sum([e.export_total_kwh() for e in all_entries]),
+        "value": safe_sum([e.value_at_tariff() for e in all_entries]),
+        "co2": safe_sum([e.co2_safe() for e in all_entries]),
+    }
+
+    return render_template(
+        "report.html",
+        user=user,
+        year=year,
+        month_rows=month_rows,
+        year_totals=year_totals,
+        lifetime_totals=lifetime_totals,
+        available_years=sorted({e.year for e in all_entries}),
+        generated_on=today.isoformat(),
+    )
 
 
 if __name__ == "__main__":

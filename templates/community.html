@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Community Totals</h2>
+
+<div class="card">
+  <h3 style="margin:0 0 12px">All time — entire group</h3>
+  <div style="display:flex;gap:20px;flex-wrap:wrap">
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Total wind generated</div>
+      <div style="font-size:1.8rem;font-weight:700">{{ "%.0f"|format(total_e_mon) }} kWh</div>
+    </div>
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Total exported to grid</div>
+      <div style="font-size:1.8rem;font-weight:700">{{ "%.0f"|format(total_export) }} kWh</div>
+    </div>
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Total value @ tariff</div>
+      <div style="font-size:1.8rem;font-weight:700">€{{ "%.0f"|format(total_value) }}</div>
+    </div>
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Total CO₂ offset</div>
+      <div style="font-size:1.8rem;font-weight:700">{{ "%.0f"|format(total_co2) }} kg</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 12px">{{ current_year }} — year to date</h3>
+  <div style="display:flex;gap:20px;flex-wrap:wrap">
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Generated YTD</div>
+      <div style="font-size:1.8rem;font-weight:700">{{ "%.0f"|format(ytd_e_mon) }} kWh</div>
+    </div>
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Exported YTD</div>
+      <div style="font-size:1.8rem;font-weight:700">{{ "%.0f"|format(ytd_export) }} kWh</div>
+    </div>
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">Value YTD</div>
+      <div style="font-size:1.8rem;font-weight:700">€{{ "%.0f"|format(ytd_value) }}</div>
+    </div>
+    <div class="card" style="margin:0;flex:1;min-width:150px">
+      <div class="muted">CO₂ offset YTD</div>
+      <div style="font-size:1.8rem;font-weight:700">{{ "%.0f"|format(ytd_co2) }} kg</div>
+    </div>
+  </div>
+</div>
+
+{% if user_emon_labels %}
+<div class="card">
+  <h3>Total generation per turbine</h3>
+  <div style="height:300px"><canvas id="communityBar"></canvas></div>
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+if(typeof Chart==="undefined")return;
+new Chart(document.getElementById("communityBar"),{
+  type:"bar",
+  data:{
+    labels:{{ user_emon_labels|tojson }},
+    datasets:[{label:"Total E-mon (kWh)",data:{{ user_emon_values|tojson }},backgroundColor:"rgba(37,99,235,0.7)",borderColor:"#2563eb",borderWidth:1}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"kWh"}}}}
+});
+});
+</script>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Per turbine breakdown</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Turbine</th><th>Capacity (kW)</th><th>Install date</th><th>Entries</th>
+        <th>Total E-mon (kWh)</th><th>Total export (kWh)</th><th>Total import (kWh)</th>
+        <th>Total CO₂ (kg)</th><th>Total value (€)</th><th>{{ current_year }} E-mon (kWh)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in user_stats %}
+    <tr>
+      <td><a href="{{ url_for('user_detail', user_id=s.id) }}">{{ s.display_name }}</a></td>
+      <td>{{ s.turbine_model or "—" }}</td>
+      <td>{{ s.turbine_capacity_kw or "—" }}</td>
+      <td>{{ s.install_date or "—" }}</td>
+      <td>{{ s.entry_count }}</td>
+      <td>{{ "%.2f"|format(s.total_e_mon) }}</td>
+      <td>{{ "%.2f"|format(s.total_export) }}</td>
+      <td>{{ "%.2f"|format(s.total_import) }}</td>
+      <td>{{ "%.2f"|format(s.total_co2) }}</td>
+      <td>{{ "%.2f"|format(s.total_value) }}</td>
+      <td>{{ "%.2f"|format(s.ytd_e_mon) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

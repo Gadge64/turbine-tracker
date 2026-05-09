@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+@media print {
+  header,.no-print{display:none !important}
+  .card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid}
+  body{background:#fff}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+
+<div class="card no-print">
+  <div class="actions-row" style="align-items:center">
+    <strong>Year:</strong>
+    {% for y in available_years %}
+      <a class="button-link {% if y != year %}btn-secondary{% endif %}" href="{{ url_for('print_report', year=y) }}">{{ y }}</a>
+    {% endfor %}
+    {% if available_years %}
+    <button onclick="window.print()" style="margin-left:auto">Print / Save PDF</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin:0 0 4px">Annual Wind Turbine Report — {{ year }}</h2>
+  <p class="muted" style="margin:0">
+    {{ user.full_name or user.username }}
+    {% if user.turbine_model %} · {{ user.turbine_model }}{% endif %}
+    {% if user.turbine_capacity_kw %} ({{ user.turbine_capacity_kw }} kW){% endif %}
+    {% if user.install_date %} · Installed {{ user.install_date }}{% endif %}
+    {% if user.mprn %} · MPRN {{ user.mprn }}{% endif %}
+  </p>
+  <p class="muted" style="margin:4px 0 0">Generated {{ generated_on }}</p>
+</div>
+
+{% if month_rows %}
+<div class="card">
+  <h3>{{ year }} — month by month</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Month</th><th>E-mon (kWh)</th><th>Import (kWh)</th><th>Export (kWh)</th>
+        <th>Used from wind (kWh)</th><th>Value (€)</th><th>CO₂ (kg)</th><th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in month_rows %}
+    <tr{% if not r.has_data %} style="color:#9ca3af"{% endif %}>
+      <td>{{ r.month_name }}</td>
+      <td>{{ "%.2f"|format(r.e_mon) if r.e_mon is not none else "—" }}</td>
+      <td>{{ "%.2f"|format(r.import_total) if r.import_total is not none else "—" }}</td>
+      <td>{{ "%.2f"|format(r.export_total) if r.export_total is not none else "—" }}</td>
+      <td>{{ "%.2f"|format(r.used_from_wind) if r.used_from_wind is not none else "—" }}</td>
+      <td>{{ "%.2f"|format(r.value) if r.value is not none else "—" }}</td>
+      <td>{{ "%.2f"|format(r.co2) if r.co2 is not none else "—" }}</td>
+      <td class="note-cell">{{ r.notes }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight:700;background:#f3f4f6">
+      <td>Total</td>
+      <td>{{ "%.2f"|format(year_totals.e_mon) }}</td>
+      <td>{{ "%.2f"|format(year_totals.import_total) }}</td>
+      <td>{{ "%.2f"|format(year_totals.export_total) }}</td>
+      <td>{{ "%.2f"|format(year_totals.used_from_wind) }}</td>
+      <td>{{ "%.2f"|format(year_totals.value) }}</td>
+      <td>{{ "%.2f"|format(year_totals.co2) }}</td>
+      <td></td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><p>No entries for {{ year }}.</p></div>
+{% endif %}
+
+<div class="card">
+  <h3>Lifetime totals (all years)</h3>
+  <table><tbody>
+    <tr><th>Total generation (E-mon)</th><td>{{ "%.2f"|format(lifetime_totals.e_mon) }} kWh</td></tr>
+    <tr><th>Total exported to grid</th><td>{{ "%.2f"|format(lifetime_totals.export) }} kWh</td></tr>
+    <tr><th>Total value @ tariff</th><td>€{{ "%.2f"|format(lifetime_totals.value) }}</td></tr>
+    <tr><th>Total CO₂ offset</th><td>{{ "%.2f"|format(lifetime_totals.co2) }} kg</td></tr>
+  </tbody></table>
+</div>
+{% endblock %}
