@@ -1327,7 +1327,8 @@ def community():
     all_entries = TurbineEntry.query.all()
 
     today = datetime.date.today()
-    year_start = datetime.date(today.year, 1, 1)
+    available_years = sorted({e.year for e in all_entries})
+    selected_year = parse_int_field(request.args, "year") or today.year
 
     total_e_mon = safe_sum([e.e_mon_total_kwh() for e in all_entries])
     total_export = safe_sum([e.export_total_kwh() for e in all_entries])
@@ -1335,16 +1336,16 @@ def community():
     total_co2 = safe_sum([e.co2_safe() for e in all_entries])
     total_value = safe_sum([e.value_at_tariff() for e in all_entries])
 
-    ytd_entries = [e for e in all_entries if e.date >= year_start]
-    ytd_e_mon = safe_sum([e.e_mon_total_kwh() for e in ytd_entries])
-    ytd_export = safe_sum([e.export_total_kwh() for e in ytd_entries])
-    ytd_co2 = safe_sum([e.co2_safe() for e in ytd_entries])
-    ytd_value = safe_sum([e.value_at_tariff() for e in ytd_entries])
+    sel_entries = [e for e in all_entries if e.year == selected_year]
+    sel_e_mon = safe_sum([e.e_mon_total_kwh() for e in sel_entries])
+    sel_export = safe_sum([e.export_total_kwh() for e in sel_entries])
+    sel_co2 = safe_sum([e.co2_safe() for e in sel_entries])
+    sel_value = safe_sum([e.value_at_tariff() for e in sel_entries])
 
     user_stats = []
     for u in all_users:
         u_entries = [e for e in all_entries if e.user_id == u.id]
-        u_ytd = [e for e in u_entries if e.date >= year_start]
+        u_sel = [e for e in u_entries if e.year == selected_year]
         user_stats.append({
             "id": u.id,
             "display_name": user_display_name(u),
@@ -1356,7 +1357,11 @@ def community():
             "total_import": safe_sum([e.import_total_kwh() for e in u_entries]),
             "total_co2": safe_sum([e.co2_safe() for e in u_entries]),
             "total_value": safe_sum([e.value_at_tariff() for e in u_entries]),
-            "ytd_e_mon": safe_sum([e.e_mon_total_kwh() for e in u_ytd]),
+            "sel_e_mon": safe_sum([e.e_mon_total_kwh() for e in u_sel]),
+            "sel_export": safe_sum([e.export_total_kwh() for e in u_sel]),
+            "sel_import": safe_sum([e.import_total_kwh() for e in u_sel]),
+            "sel_co2": safe_sum([e.co2_safe() for e in u_sel]),
+            "sel_value": safe_sum([e.value_at_tariff() for e in u_sel]),
             "entry_count": len(u_entries),
         })
 
@@ -1367,13 +1372,15 @@ def community():
         total_import=total_import,
         total_co2=total_co2,
         total_value=total_value,
-        ytd_e_mon=ytd_e_mon,
-        ytd_export=ytd_export,
-        ytd_co2=ytd_co2,
-        ytd_value=ytd_value,
+        sel_e_mon=sel_e_mon,
+        sel_export=sel_export,
+        sel_co2=sel_co2,
+        sel_value=sel_value,
         user_stats=user_stats,
         user_emon_labels=[s["display_name"] for s in user_stats],
-        user_emon_values=[s["total_e_mon"] for s in user_stats],
+        user_emon_values=[s["sel_e_mon"] for s in user_stats],
+        available_years=available_years,
+        selected_year=selected_year,
         current_year=today.year,
     )
 
