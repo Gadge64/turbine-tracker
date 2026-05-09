@@ -1320,6 +1320,76 @@ def admin_add_entry(user_id: int):
     return redirect(url_for("user_detail", user_id=user_id))
 
 
+@app.route("/admin/users/batch", methods=["GET", "POST"])
+@admin_required
+def admin_batch_users():
+    results = []
+    raw_input = ""
+
+    if request.method == "POST":
+        raw_input = request.form.get("user_list") or ""
+        lines = [l.strip() for l in raw_input.splitlines() if l.strip()]
+
+        for line in lines:
+            parts = [p.strip() for p in line.split(",")]
+            full_name = parts[0] if parts else ""
+            if not full_name:
+                continue
+
+            turbine_model = (parts[1] if len(parts) > 1 else "").strip() or None
+            capacity_raw = (parts[2] if len(parts) > 2 else "").strip()
+            inverter_raw = (parts[3] if len(parts) > 3 else "single").strip().lower()
+
+            capacity_kw: Optional[float] = None
+            if capacity_raw:
+                digits = "".join(c for c in capacity_raw if c.isdigit() or c == ".")
+                try:
+                    capacity_kw = float(digits) if digits else None
+                except ValueError:
+                    pass
+
+            is_dual = "dual" in inverter_raw
+
+            ascii_first = full_name.encode("ascii", "ignore").decode()
+            words = ascii_first.split()
+            first_word = "".join(c for c in words[0].lower() if c.isalnum()) if words else "user"
+            if not first_word:
+                first_word = "user"
+
+            username = first_word
+            counter = 2
+            while User.query.filter_by(username=username).first():
+                username = f"{first_word}{counter}"
+                counter += 1
+
+            password = f"{first_word}1"
+
+            new_user = User(
+                username=username,
+                password_hash=generate_password_hash(password),
+                full_name=full_name,
+                is_admin=0,
+                turbine_model=turbine_model,
+                turbine_capacity_kw=capacity_kw,
+                turbine_size_notes="Dual inverter" if is_dual else None,
+            )
+            db.session.add(new_user)
+            results.append({
+                "full_name": full_name,
+                "username": username,
+                "password": password,
+                "turbine_model": turbine_model or "—",
+                "capacity_kw": f"{capacity_kw:.0f}" if capacity_kw else "—",
+                "inverter": "Dual" if is_dual else "Single",
+            })
+
+        if results:
+            db.session.commit()
+            flash(f"{len(results)} user(s) created.", "success")
+
+    return render_template("admin_batch_users.html", results=results, raw_input=raw_input)
+
+
 @app.route("/community")
 @login_required
 def community():

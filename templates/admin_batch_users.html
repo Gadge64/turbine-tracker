@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin — Batch Add Users</h2>
+
+<div class="card">
+  <h3 style="margin:0 0 8px">Paste user list</h3>
+  <p class="muted" style="margin:0 0 12px">One user per line: <strong>Full Name, Turbine Model, Capacity kW, single or dual</strong><br>
+  Capacity and inverter are optional. Leave blank columns with a comma placeholder if needed.<br>
+  Example: <code>John Smith, Enercon E33, 330, single</code></p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="margin-bottom:12px">
+      <textarea name="user_list" rows="12" style="font-family:monospace;font-size:.9rem" placeholder="John Smith, Enercon E33, 330, single&#10;Mary Jones, Vestas V27, 225, dual&#10;Tom Brown, , 250, single">{{ raw_input }}</textarea>
+    </div>
+    <button type="submit">Create users</button>
+    <a class="button-link btn-secondary" href="{{ url_for('admin_users') }}">Cancel</a>
+  </form>
+</div>
+
+{% if results %}
+<div class="card">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <h3 style="margin:0">{{ results|length }} user(s) created</h3>
+    <button class="btn-secondary" onclick="downloadCSV()" style="font-size:.85rem">Download credentials CSV</button>
+  </div>
+  <table id="resultsTable">
+    <thead>
+      <tr><th>Full name</th><th>Username</th><th>Password</th><th>Turbine</th><th>Capacity (kW)</th><th>Inverter</th></tr>
+    </thead>
+    <tbody>
+    {% for r in results %}
+    <tr>
+      <td>{{ r.full_name }}</td>
+      <td><strong>{{ r.username }}</strong></td>
+      <td><strong>{{ r.password }}</strong></td>
+      <td>{{ r.turbine_model }}</td>
+      <td>{{ r.capacity_kw }}</td>
+      <td>{{ r.inverter }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:10px">Save or download these credentials now — passwords cannot be recovered once you leave this page.</p>
+</div>
+<script>
+function downloadCSV(){
+  const rows=[["Full Name","Username","Password","Turbine","Capacity (kW)","Inverter"]];
+  document.querySelectorAll("#resultsTable tbody tr").forEach(tr=>{
+    rows.push([...tr.querySelectorAll("td")].map(td=>td.textContent.trim()));
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+c.replace(/"/g,'""')+'"').join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
+  a.download="new_user_credentials.csv";
+  a.click();
+}
+</script>
+{% endif %}
+{% endblock %}
