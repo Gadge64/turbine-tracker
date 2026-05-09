@@ -1,15 +1,44 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+.t-rotor{animation:t-spin 4s linear infinite;transform-origin:0 0}
+@keyframes t-spin{to{transform:rotate(360deg)}}
+</style>
 <h2>Dashboard</h2>
 <div class="card">
-  <p>Welcome, <strong>{{ user.full_name or user.username }}</strong>.</p>
-  <div class="actions-row">
-    <a class="button-link" href="{{ url_for('add_entry') }}">Add monthly entry</a>
-    <a class="button-link btn-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
-    <a class="button-link btn-secondary" href="{{ url_for('import_csv') }}">Import CSV</a>
-    <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Download Full Backup</a>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+    <div style="flex:1">
+      <p style="margin:0 0 10px">Welcome, <strong>{{ user.full_name or user.username }}</strong>.</p>
+      <div class="actions-row">
+        <a class="button-link" href="{{ url_for('add_entry') }}">Add monthly entry</a>
+        <a class="button-link btn-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
+        <a class="button-link btn-secondary" href="{{ url_for('import_csv') }}">Import CSV</a>
+        <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Download Full Backup</a>
+      </div>
+      <p class="muted" style="margin:10px 0 0"><strong>Entries:</strong> {{ entry_count }} | <strong>Total E-mon:</strong> {{ "%.2f"|format(total_e_mon) }} kWh</p>
+    </div>
+    <div style="flex-shrink:0;opacity:.85">
+      <svg viewBox="0 0 120 210" width="90" height="158" xmlns="http://www.w3.org/2000/svg">
+        <!-- Base -->
+        <rect x="44" y="200" width="32" height="8" rx="3" fill="#4b5563"/>
+        <!-- Tower -->
+        <polygon points="51,200 69,200 64,90 56,90" fill="#9ca3af"/>
+        <polygon points="63,200 69,200 64,90 61,90" fill="#d1d5db" opacity="0.45"/>
+        <!-- Nacelle -->
+        <rect x="55" y="83" width="24" height="11" rx="3" fill="#6b7280"/>
+        <!-- Rotor centred at hub (60, 88) -->
+        <g transform="translate(60,88)">
+          <g class="t-rotor">
+            <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4"/>
+            <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4" transform="rotate(120)"/>
+            <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4" transform="rotate(240)"/>
+            <circle r="7" fill="#374151"/>
+            <circle r="3" fill="#9ca3af"/>
+          </g>
+        </g>
+      </svg>
+    </div>
   </div>
-  <p class="muted"><strong>Entries:</strong> {{ entry_count }} | <strong>Total E-mon:</strong> {{ "%.2f"|format(total_e_mon) }} kWh</p>
 </div>
 
 {% if lifetime_e_mon > 0 or lifetime_value > 0 %}
