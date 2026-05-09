@@ -1,11 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+.t-rotor{animation:t-spin 4s linear infinite;transform-origin:0 0}
+@keyframes t-spin{to{transform:rotate(360deg)}}
+</style>
 <div class="card">
-  <h1>Wind Turbine Tracker</h1>
-  <p>Track turbine generation, imports, exports, CO₂, notes, users and comparisons.</p>
-  <div class="actions-row">
-    <a class="button-link" href="{{ url_for('login') }}">Login</a>
-    <a class="button-link btn-secondary" href="{{ url_for('register') }}">Register</a>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+    <div style="flex:1">
+      <h1 style="margin:0 0 8px">Wind Turbine Tracker</h1>
+      <p style="margin:0 0 14px">Track turbine generation, imports, exports, CO₂, notes, users and comparisons.</p>
+      <div class="actions-row">
+        <a class="button-link" href="{{ url_for('login') }}">Login</a>
+        <a class="button-link btn-secondary" href="{{ url_for('register') }}">Register</a>
+      </div>
+    </div>
+    <div style="flex-shrink:0;opacity:.85">
+      <svg viewBox="0 0 120 210" width="90" height="158" xmlns="http://www.w3.org/2000/svg">
+        <rect x="44" y="200" width="32" height="8" rx="3" fill="#4b5563"/>
+        <polygon points="51,200 69,200 64,90 56,90" fill="#9ca3af"/>
+        <polygon points="63,200 69,200 64,90 61,90" fill="#d1d5db" opacity="0.45"/>
+        <rect x="55" y="83" width="24" height="11" rx="3" fill="#6b7280"/>
+        <g transform="translate(60,88)">
+          <g class="t-rotor">
+            <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4"/>
+            <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4" transform="rotate(120)"/>
+            <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4" transform="rotate(240)"/>
+            <circle r="7" fill="#374151"/>
+            <circle r="3" fill="#9ca3af"/>
+          </g>
+        </g>
+      </svg>
+    </div>
   </div>
 </div>
 {% endblock %}
