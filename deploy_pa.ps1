@@ -24,10 +24,9 @@ $headers = @{ Authorization = "Token $Token" }
 Write-Host "[2/3] Triggering git pull on live server..."
 
 try {
-    $pullResult = Invoke-RestMethod `
-        -Uri    "https://$domain/deploy?secret=$DeploySecret" `
-        -Method GET
-
+    # Use curl.exe (built into Windows) rather than PowerShell's Invoke-RestMethod
+    # because it handles HTTPS redirects reliably without extra configuration
+    $pullResult = & curl.exe -s "https://$domain/deploy?secret=$DeploySecret"
     Write-Host "      Server response: $pullResult"
 } catch {
     Write-Host "      WARNING: Deploy webhook failed: $($_.Exception.Message)"
