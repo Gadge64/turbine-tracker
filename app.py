@@ -107,6 +107,12 @@ class User(db.Model):
     # Use for admin/test accounts that should not skew group analytics.
     exclude_from_analytics = db.Column(db.Integer, nullable=False, default=0)
 
+    # Stores the plain-text password only when an admin creates or resets it.
+    # This is intentionally stored so admins can print a credentials sheet for members.
+    # IMPORTANT: this field is cleared to None if the user changes their own password,
+    # because at that point we no longer know what their password is.
+    temp_password = db.Column(db.String(200), nullable=True)
+
     # Wind turbine hardware details
     turbine_model = db.Column(db.String(200), nullable=True)
     turbine_capacity_kw = db.Column(db.Float, nullable=True)      # How many kilowatts the turbine can generate
@@ -318,6 +324,7 @@ def ensure_user_schema_sqlite() -> None:
         "share_phone_public": "INTEGER",
         "share_address_public": "INTEGER",
         "exclude_from_analytics": "INTEGER",
+        "temp_password": "TEXT",   # Last admin-set password in plain text (for credentials sheet)
         "turbine_model": "TEXT",
         "turbine_capacity_kw": "REAL",
         "turbine_size_notes": "TEXT",
@@ -1342,9 +1349,10 @@ def admin_new_user():
 
         new_user = User(
             username=username,
-            password_hash=generate_password_hash(password),
+            password_hash=generate_password_hash(password),  # Hash the password before storing
             is_admin=is_admin_flag,
             full_name=full_name,
+            temp_password=password,  # Also save the plain-text version for the credentials sheet
         )
         db.session.add(new_user)
         db.session.commit()
@@ -1362,7 +1370,8 @@ def admin_reset_password(user_id: int):
         if len(new_password) < 6:
             flash("Password must be at least 6 characters.", "danger")
             return render_template("admin_reset_password.html", target_user=target_user)
-        target_user.password_hash = generate_password_hash(new_password)
+        target_user.password_hash = generate_password_hash(new_password)  # Store the secure hash
+        target_user.temp_password = new_password  # Also save plain text for the credentials sheet
         db.session.commit()
         flash(f"Password reset for {target_user.username}.", "success")
         return redirect(url_for("admin_users"))
@@ -1404,9 +1413,10 @@ def admin_clone_user(user_id: int):
             return render_template("admin_clone_user.html", source=source)
         new_user = User(
             username=new_username,
-            password_hash=generate_password_hash(password),
+            password_hash=generate_password_hash(password),  # Secure hash for login
             is_admin=0,
             full_name=full_name,
+            temp_password=password,  # Plain-text copy for the credentials sheet
             turbine_model=source.turbine_model,
             turbine_capacity_kw=source.turbine_capacity_kw,
             turbine_size_notes=source.turbine_size_notes,
@@ -1534,12 +1544,13 @@ def admin_batch_users():
 
             new_user = User(
                 username=username,
-                password_hash=generate_password_hash(password),
+                password_hash=generate_password_hash(password),  # Secure hash for login checks
                 full_name=full_name,
                 is_admin=0,
                 turbine_model=turbine_model,
                 turbine_capacity_kw=capacity_kw,
                 turbine_size_notes="Dual inverter" if is_dual else None,
+                temp_password=password,  # Plain-text copy for the credentials sheet
             )
             db.session.add(new_user)
             results.append({
@@ -1593,7 +1604,8 @@ def admin_edit_profile(user_id: int):
         u.exclude_from_analytics = 1 if request.form.get("exclude_from_analytics") else 0
         new_pw = request.form.get("new_password", "").strip()
         if new_pw:
-            u.password_hash = generate_password_hash(new_pw)
+            u.password_hash = generate_password_hash(new_pw)  # Store the secure hash
+            u.temp_password = new_pw  # Save plain text so credentials sheet stays up to date
         db.session.commit()
         flash(f"Profile for {u.username} updated.", "success")
         return redirect(url_for("admin_users"))
@@ -1934,6 +1946,20 @@ def delete_maintenance(log_id: int):
     db.session.commit()
     flash("Maintenance entry deleted.", "success")
     return redirect(url_for("maintenance"))
+
+
+@app.route("/admin/credentials")
+@admin_required  # Only admins can access this page
+def admin_credentials():
+    # Fetch all users, sorted alphabetically by username.
+    # We include ALL users (even analytics-excluded ones like admin accounts)
+    # because this sheet is for login purposes, not analytics.
+    users = User.query.order_by(User.username.asc()).all()
+
+    # Pass the list of users and today's date to the template.
+    # The date appears in the footer of the printed sheet so you know when it was generated.
+    generated_on = datetime.datetime.now().strftime("%d %b %Y %H:%M")
+    return render_template("admin_credentials.html", users=users, now=generated_on)
 
 
 if __name__ == "__main__":
