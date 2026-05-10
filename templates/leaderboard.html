@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Leaderboard — {{ year }}</h2>
+<div class="card">
+<p class="muted" style="margin-bottom:12px">Ranked by {{ year }} generation. Self-sufficiency is the average monthly % of household consumption met by wind.</p>
+<table>
+<thead>
+<tr>
+  <th>#</th>
+  <th>Member</th>
+  <th>{{ year }} Generated (kWh)</th>
+  <th>{{ year }} Self-suff %</th>
+  <th>All-time Generated (kWh)</th>
+  <th>Entry streak (months)</th>
+</tr>
+</thead>
+<tbody>
+{% for r in rows %}
+<tr>
+  <td><strong>{{ loop.index }}</strong></td>
+  <td>{{ r.display_name }}</td>
+  <td>{{ "—" if r.ytd_generated == 0 else "%.0f"|format(r.ytd_generated) }}</td>
+  <td>{{ "—" if r.avg_self_sufficiency is none else r.avg_self_sufficiency|string ~ "%" }}</td>
+  <td>{{ "—" if r.all_time_generated == 0 else "%.0f"|format(r.all_time_generated) }}</td>
+  <td>{{ r.entry_streak if r.entry_streak > 0 else "—" }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

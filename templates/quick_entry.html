@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Quick Entry</h2>
+<p class="muted" style="margin-bottom:16px">Enter just the key readings. You can fill in extra detail by editing the entry afterwards.</p>
+<div class="card">
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="form-grid two">
+  <div>
+    <label>Year</label>
+    <input type="number" name="year" value="{{ default_year }}" required>
+  </div>
+  <div>
+    <label>Month</label>
+    <select name="month">
+      {% for i, m in [("1","Jan"),("2","Feb"),("3","Mar"),("4","Apr"),("5","May"),("6","Jun"),("7","Jul"),("8","Aug"),("9","Sep"),("10","Oct"),("11","Nov"),("12","Dec")] %}
+        <option value="{{ i }}" {% if i|int == default_month %}selected{% endif %}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label>E-mon 1 (kWh)</label>
+    <input type="number" step="any" name="e_mon_kwh" placeholder="Wind generated this month">
+  </div>
+  <div>
+    <label>E-mon 2 (kWh) <span class="muted">— dual inverter only</span></label>
+    <input type="number" step="any" name="e_mon_kwh_2" placeholder="Leave blank if single">
+  </div>
+
+  <div>
+    <label>Import start (kWh)</label>
+    <input type="number" step="any" name="import_start_kwh" value="{{ default_import_start if default_import_start is not none else '' }}">
+  </div>
+  <div>
+    <label>Import end (kWh)</label>
+    <input type="number" step="any" name="import_end_kwh">
+  </div>
+
+  <div>
+    <label>Export start (kWh)</label>
+    <input type="number" step="any" name="export_start_kwh" value="{{ default_export_start if default_export_start is not none else '' }}">
+  </div>
+  <div>
+    <label>Export end (kWh)</label>
+    <input type="number" step="any" name="export_end_kwh">
+  </div>
+
+  <div>
+    <label>Tariff rate (€/kWh)</label>
+    <input type="number" step="any" name="tariff_rate" value="{{ default_tariff }}">
+  </div>
+</div>
+<div class="actions-row">
+  <button>Save entry</button>
+  <a class="button-link btn-secondary" href="{{ url_for('add_entry') }}">Full form</a>
+  <a class="button-link btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a>
+</div>
+</form>
+</div>
+{% endblock %}

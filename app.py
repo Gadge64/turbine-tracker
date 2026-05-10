@@ -163,6 +163,23 @@ class TurbineEntry(db.Model):
             return None
         return e_mon * self.tariff_safe()
 
+    def self_sufficiency_pct(self) -> Optional[float]:
+        wind_used = self.used_from_wind_effective_kwh()
+        total = self.house_total_wind_grid_kwh()
+        if wind_used is None or total is None or total <= 0:
+            return None
+        return min(wind_used / total * 100.0, 100.0)
+
+
+class MaintenanceLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    description = db.Column(db.String(500), nullable=False)
+    cost = db.Column(db.Float, nullable=True)
+    next_service_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.String(500), nullable=True)
+
 
 def init_db() -> None:
     with app.app_context():
@@ -583,6 +600,7 @@ def dashboard():
         "Import total (kWh)": series([e.import_total_kwh() for e in entries]),
         "Export total (kWh)": series([e.export_total_kwh() for e in entries]),
         "Used from wind (kWh)": series([e.used_from_wind_effective_kwh() for e in entries]),
+        "Self-sufficiency (%)": series([e.self_sufficiency_pct() for e in entries]),
         "Inverter total (kWh)": series([e.inverter_total_combined() for e in entries]),
         "House total (Wind & Grid)": series([e.house_total_wind_grid_kwh() for e in entries]),
         "Value @ tariff": series([e.value_at_tariff() for e in entries]),
@@ -630,6 +648,18 @@ def dashboard():
     lifetime_co2 = safe_sum([e.co2_safe() for e in entries])
     lifetime_export = safe_sum([e.export_total_kwh() for e in entries])
     lifetime_import = safe_sum([e.import_total_kwh() for e in entries])
+
+    _total_wind_used = safe_sum([e.used_from_wind_effective_kwh() for e in entries])
+    _total_house = safe_sum([e.house_total_wind_grid_kwh() for e in entries])
+    lifetime_self_sufficiency: Optional[float] = round(_total_wind_used / _total_house * 100, 1) if _total_house > 0 else None
+
+    next_service = (
+        MaintenanceLog.query
+        .filter(MaintenanceLog.user_id == user.id,
+                MaintenanceLog.next_service_date >= datetime.date.today())
+        .order_by(MaintenanceLog.next_service_date.asc())
+        .first()
+    )
 
     if entries:
         oldest = min(entries, key=lambda e: (e.year, e.month))
@@ -685,6 +715,8 @@ def dashboard():
         years=years,
         yoy_datasets=yoy_datasets,
         yoy_metric_labels=[m[0] for m in yoy_metric_fns],
+        lifetime_self_sufficiency=lifetime_self_sufficiency,
+        next_service=next_service,
     )
 
 
@@ -1550,6 +1582,210 @@ def print_report():
         available_years=sorted({e.year for e in all_entries}),
         generated_on=today.isoformat(),
     )
+
+
+@app.route("/add/quick", methods=["GET", "POST"])
+@login_required
+def quick_entry():
+    user = get_current_user()
+    if request.method == "GET":
+        today = datetime.date.today()
+        year = parse_int_field(request.args, "year") or today.year
+        month = parse_int_field(request.args, "month") or today.month
+        dup = find_duplicate_entry(user.id, year, month)
+        if dup:
+            flash(f"Entry already exists for {year}-{month:02d}. Opening it for editing.", "info")
+            return redirect(url_for("edit_entry", entry_id=dup.id))
+        prev_entry = get_previous_month_entry(user.id, year, month)
+        return render_template(
+            "quick_entry.html",
+            default_year=year,
+            default_month=month,
+            default_import_start=prev_entry.import_end_kwh if prev_entry and prev_entry.import_end_kwh is not None else None,
+            default_export_start=prev_entry.export_end_kwh if prev_entry and prev_entry.export_end_kwh is not None else None,
+            default_tariff=prev_entry.tariff_safe() if prev_entry else 0.195,
+        )
+    year = parse_int_field(request.form, "year", "Year", required=True)
+    month = parse_int_field(request.form, "month", "Month", required=True)
+    if year is None or month is None or not (1 <= month <= 12):
+        flash("Valid year and month are required.", "danger")
+        return redirect(url_for("quick_entry"))
+    if find_duplicate_entry(user.id, year, month):
+        flash(f"Entry already exists for {year}-{month:02d}.", "danger")
+        return redirect(url_for("dashboard"))
+    e_mon = parse_float_field(request.form, "e_mon_kwh", "E-mon 1")
+    e_mon_2 = parse_float_field(request.form, "e_mon_kwh_2", "E-mon 2")
+    entry = TurbineEntry(
+        user_id=user.id,
+        year=year,
+        month=month,
+        date=datetime.date(year, month, 1),
+        import_start_kwh=parse_float_field(request.form, "import_start_kwh"),
+        import_end_kwh=parse_float_field(request.form, "import_end_kwh"),
+        export_start_kwh=parse_float_field(request.form, "export_start_kwh"),
+        export_end_kwh=parse_float_field(request.form, "export_end_kwh"),
+        e_mon_kwh=e_mon,
+        e_mon_kwh_2=e_mon_2,
+        tariff_rate=parse_float_field(request.form, "tariff_rate"),
+        inverter_total_kwh=auto_inverter_total_kwh(user.id, year, month, e_mon),
+        inverter_total_kwh_2=auto_inverter_total_kwh_2(user.id, year, month, e_mon_2),
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash("Entry saved. You can add more detail by editing it.", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/entries/bulk-tariff", methods=["GET", "POST"])
+@login_required
+def bulk_tariff():
+    user = get_current_user()
+    entries = (TurbineEntry.query.filter_by(user_id=user.id)
+               .order_by(TurbineEntry.year.asc(), TurbineEntry.month.asc()).all())
+    if request.method == "POST":
+        from_year = parse_int_field(request.form, "from_year", "From year", required=True)
+        from_month = parse_int_field(request.form, "from_month", "From month", required=True)
+        new_rate = parse_float_field(request.form, "tariff_rate", "Tariff rate", required=True)
+        if from_year is None or from_month is None or new_rate is None:
+            return render_template("bulk_tariff.html", entries=entries)
+        if not (1 <= from_month <= 12):
+            flash("Month must be between 1 and 12.", "danger")
+            return render_template("bulk_tariff.html", entries=entries)
+        from_date = datetime.date(from_year, from_month, 1)
+        to_update = [e for e in entries if e.date >= from_date]
+        for e in to_update:
+            e.tariff_rate = new_rate
+        db.session.commit()
+        flash(f"Tariff updated to €{new_rate:.4f}/kWh on {len(to_update)} entr{'y' if len(to_update) == 1 else 'ies'} from {MONTH_ABBRS[from_month - 1]} {from_year} onwards.", "success")
+        return redirect(url_for("dashboard"))
+    return render_template("bulk_tariff.html", entries=entries)
+
+
+@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    all_users = User.query.order_by(User.username.asc()).all()
+    all_entries = TurbineEntry.query.all()
+    today = datetime.date.today()
+    year_start = datetime.date(today.year, 1, 1)
+
+    rows = []
+    for u in all_users:
+        user_entries = [e for e in all_entries if e.user_id == u.id]
+        ytd_entries = [e for e in user_entries if e.date >= year_start]
+
+        ss_vals = [v for v in (e.self_sufficiency_pct() for e in ytd_entries) if v is not None]
+        avg_ss: Optional[float] = round(sum(ss_vals) / len(ss_vals), 1) if ss_vals else None
+
+        sorted_e = sorted(user_entries, key=lambda e: (e.year, e.month))
+        streak = 0
+        if sorted_e:
+            exp_y, exp_m = sorted_e[-1].year, sorted_e[-1].month
+            for e in reversed(sorted_e):
+                if (e.year, e.month) == (exp_y, exp_m):
+                    streak += 1
+                    exp_y, exp_m = prev_year_month(exp_y, exp_m)
+                else:
+                    break
+
+        rows.append({
+            "display_name": user_display_name(u),
+            "ytd_generated": safe_sum([e.e_mon_total_kwh() for e in ytd_entries]),
+            "all_time_generated": safe_sum([e.e_mon_total_kwh() for e in user_entries]),
+            "avg_self_sufficiency": avg_ss,
+            "entry_streak": streak,
+        })
+
+    rows.sort(key=lambda r: r["ytd_generated"], reverse=True)
+    return render_template("leaderboard.html", rows=rows, year=today.year)
+
+
+@app.route("/maintenance")
+@login_required
+def maintenance():
+    user = get_current_user()
+    logs = (MaintenanceLog.query.filter_by(user_id=user.id)
+            .order_by(MaintenanceLog.date.desc()).all())
+    today = datetime.date.today()
+    upcoming = [l for l in logs if l.next_service_date and l.next_service_date >= today]
+    upcoming.sort(key=lambda l: l.next_service_date)
+    return render_template("maintenance.html", logs=logs, upcoming=upcoming, today=today)
+
+
+@app.route("/maintenance/add", methods=["GET", "POST"])
+@login_required
+def add_maintenance():
+    user = get_current_user()
+    if request.method == "POST":
+        date_raw = (request.form.get("date") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        if not date_raw or not description:
+            flash("Date and description are required.", "danger")
+            return render_template("maintenance_form.html", log=None,
+                                   action_url=url_for("add_maintenance"), title="Add maintenance entry")
+        date_val = parse_date_yyyy_mm_dd(date_raw)
+        if date_val is None:
+            flash("Invalid date format.", "danger")
+            return render_template("maintenance_form.html", log=None,
+                                   action_url=url_for("add_maintenance"), title="Add maintenance entry")
+        log = MaintenanceLog(
+            user_id=user.id,
+            date=date_val,
+            description=description,
+            cost=parse_float_field(request.form, "cost"),
+            next_service_date=parse_date_yyyy_mm_dd(request.form.get("next_service_date") or ""),
+            notes=(request.form.get("notes") or "").strip() or None,
+        )
+        db.session.add(log)
+        db.session.commit()
+        flash("Maintenance entry added.", "success")
+        return redirect(url_for("maintenance"))
+    return render_template("maintenance_form.html", log=None,
+                           action_url=url_for("add_maintenance"), title="Add maintenance entry")
+
+
+@app.route("/maintenance/<int:log_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_maintenance(log_id: int):
+    user = get_current_user()
+    log = db.get_or_404(MaintenanceLog, log_id)
+    if log.user_id != user.id and not user.is_admin:
+        abort(403)
+    if request.method == "POST":
+        date_raw = (request.form.get("date") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        if not date_raw or not description:
+            flash("Date and description are required.", "danger")
+            return render_template("maintenance_form.html", log=log,
+                                   action_url=url_for("edit_maintenance", log_id=log_id), title="Edit maintenance entry")
+        date_val = parse_date_yyyy_mm_dd(date_raw)
+        if date_val is None:
+            flash("Invalid date format.", "danger")
+            return render_template("maintenance_form.html", log=log,
+                                   action_url=url_for("edit_maintenance", log_id=log_id), title="Edit maintenance entry")
+        log.date = date_val
+        log.description = description
+        log.cost = parse_float_field(request.form, "cost")
+        log.next_service_date = parse_date_yyyy_mm_dd(request.form.get("next_service_date") or "")
+        log.notes = (request.form.get("notes") or "").strip() or None
+        db.session.commit()
+        flash("Maintenance entry updated.", "success")
+        return redirect(url_for("maintenance"))
+    return render_template("maintenance_form.html", log=log,
+                           action_url=url_for("edit_maintenance", log_id=log_id), title="Edit maintenance entry")
+
+
+@app.route("/maintenance/<int:log_id>/delete", methods=["POST"])
+@login_required
+def delete_maintenance(log_id: int):
+    user = get_current_user()
+    log = db.get_or_404(MaintenanceLog, log_id)
+    if log.user_id != user.id and not user.is_admin:
+        abort(403)
+    db.session.delete(log)
+    db.session.commit()
+    flash("Maintenance entry deleted.", "success")
+    return redirect(url_for("maintenance"))
 
 
 if __name__ == "__main__":

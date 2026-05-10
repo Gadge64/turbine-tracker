@@ -215,10 +215,12 @@
       {% if session.get('user_id') %}
         <a href="{{ url_for('dashboard') }}"  class="{{ 'nav-active' if request.endpoint == 'dashboard' }}">Dashboard</a>
         <a href="{{ url_for('add_entry') }}"  class="{{ 'nav-active' if request.endpoint == 'add_entry' }}">Add Entry</a>
-        <a href="{{ url_for('compare') }}"    class="{{ 'nav-active' if request.endpoint == 'compare' }}">Compare</a>
+        <a href="{{ url_for('compare') }}"      class="{{ 'nav-active' if request.endpoint == 'compare' }}">Compare</a>
         <a href="{{ url_for('community') }}"  class="{{ 'nav-active' if request.endpoint == 'community' }}">Community</a>
+        <a href="{{ url_for('leaderboard') }}" class="{{ 'nav-active' if request.endpoint == 'leaderboard' }}">Leaderboard</a>
         <a href="{{ url_for('users') }}"      class="{{ 'nav-active' if request.endpoint == 'users' }}">Members</a>
         <a href="{{ url_for('profile') }}"    class="{{ 'nav-active' if request.endpoint in ['profile','edit_profile'] }}">Profile</a>
+        <a href="{{ url_for('maintenance') }}" class="{{ 'nav-active' if 'maintenance' in request.endpoint }}">Maintenance</a>
         <a href="{{ url_for('download_database_backup') }}" class="btn-secondary" style="font-size:.8rem;padding:5px 10px">Backup</a>
         {% if nav_user and nav_user.is_admin %}
           <div class="nav-sep"></div>

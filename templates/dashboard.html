@@ -11,6 +11,7 @@
       <p style="margin:0 0 10px">Welcome, <strong>{{ user.full_name or user.username }}</strong>.</p>
       <div class="actions-row">
         <a class="button-link" href="{{ url_for('add_entry') }}">Add monthly entry</a>
+        <a class="button-link btn-secondary" href="{{ url_for('quick_entry') }}">Quick entry</a>
         <a class="button-link btn-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
         <a class="button-link btn-secondary" href="{{ url_for('import_csv') }}">Import CSV</a>
         <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Download Full Backup</a>
@@ -49,9 +50,20 @@
     <div><div class="muted">Value @ tariff</div><strong style="font-size:1.4rem">€{{ "%.2f"|format(lifetime_value) }}</strong></div>
     <div><div class="muted">Exported</div><strong style="font-size:1.4rem">{{ "%.0f"|format(lifetime_export) }} kWh</strong></div>
     <div><div class="muted">Imported</div><strong style="font-size:1.4rem">{{ "%.0f"|format(lifetime_import) }} kWh</strong></div>
+    {% if lifetime_self_sufficiency is not none %}<div><div class="muted">Self-sufficient</div><strong style="font-size:1.4rem">{{ lifetime_self_sufficiency }}%</strong></div>{% endif %}
     {% if lifetime_co2 > 0 %}<div><div class="muted">CO₂ offset</div><strong style="font-size:1.4rem">{{ "%.1f"|format(lifetime_co2) }} kg</strong></div>{% endif %}
-    <div><a class="button-link btn-secondary" href="{{ url_for('print_report') }}">Annual report</a></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a class="button-link btn-secondary" href="{{ url_for('print_report') }}">Annual report</a>
+      <a class="button-link btn-secondary" href="{{ url_for('bulk_tariff') }}">Update tariff</a>
+    </div>
   </div>
+</div>
+{% endif %}
+
+{% if next_service %}
+<div class="flash info">
+  <strong>Service due:</strong> {{ next_service.next_service_date.strftime("%d %b %Y") }} — {{ next_service.description }}
+  — <a href="{{ url_for('maintenance') }}">View maintenance log</a>
 </div>
 {% endif %}
 
@@ -145,7 +157,7 @@ metricSel.addEventListener("change",function(){chart.data.datasets=buildDatasets
 <h3>Monthly entries</h3>
 {% if entries %}
 {% set month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] %}
-<table><thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Inv 1 total</th><th>Inv 2 total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th><th></th></tr></thead><tbody>
+<table><thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Self-suff %</th><th>Inv 1 total</th><th>Inv 2 total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th><th></th></tr></thead><tbody>
 {% for e in entries %}
 {% set warns = entry_warnings.get(e.id, []) %}
 <tr{% if warns %} style="background:#fffbeb"{% endif %}>
@@ -155,6 +167,7 @@ metricSel.addEventListener("change",function(){chart.data.datasets=buildDatasets
 <td>{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
 <td>{{ "" if e.export_total_kwh() is none else "%.2f"|format(e.export_total_kwh()) }}</td>
 <td>{{ "" if e.used_from_wind_effective_kwh() is none else "%.2f"|format(e.used_from_wind_effective_kwh()) }}</td>
+<td>{{ "" if e.self_sufficiency_pct() is none else "%.1f"|format(e.self_sufficiency_pct()) ~ "%" }}</td>
 <td>{{ "" if e.inverter_total_kwh is none else "%.2f"|format(e.inverter_total_kwh) }}</td>
 <td>{{ "" if e.inverter_total_kwh_2 is none else "%.2f"|format(e.inverter_total_kwh_2) }}</td>
 <td>{{ "" if e.value_at_tariff() is none else "%.2f"|format(e.value_at_tariff()) }}</td>

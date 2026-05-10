@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Update Tariff Rate</h2>
+<div class="card">
+  <p style="margin-bottom:14px">Set a new tariff rate and apply it to all your entries from a chosen month onwards. Useful when your electricity tariff changes.</p>
+  <form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid two">
+    <div>
+      <label>New tariff rate (€/kWh)</label>
+      <input type="number" step="0.0001" name="tariff_rate" placeholder="e.g. 0.2100" required>
+    </div>
+    <div></div>
+    <div>
+      <label>Apply from month</label>
+      <select name="from_month">
+        {% for i, m in [("1","Jan"),("2","Feb"),("3","Mar"),("4","Apr"),("5","May"),("6","Jun"),("7","Jul"),("8","Aug"),("9","Sep"),("10","Oct"),("11","Nov"),("12","Dec")] %}
+          <option value="{{ i }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Apply from year</label>
+      <input type="number" name="from_year" placeholder="e.g. 2025" required>
+    </div>
+  </div>
+  {% if entries %}
+  <p class="muted" style="margin:12px 0 4px">You have entries from
+    <strong>{{ entries[0].date.strftime("%b %Y") }}</strong> to
+    <strong>{{ entries[-1].date.strftime("%b %Y") }}</strong>
+    ({{ entries|length }} total).
+  </p>
+  {% endif %}
+  <div class="actions-row">
+    <button>Apply tariff update</button>
+    <a class="button-link btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a>
+  </div>
+  </form>
+</div>
+{% endblock %}

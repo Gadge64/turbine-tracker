@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ title }}</h2>
+<div class="card">
+<form method="post" action="{{ action_url }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="form-grid two">
+  <div>
+    <label>Date <span class="muted">(required)</span></label>
+    <input type="date" name="date" value="{{ log.date.isoformat() if log else '' }}" required>
+  </div>
+  <div>
+    <label>Cost (€) <span class="muted">— optional</span></label>
+    <input type="number" step="0.01" name="cost" value="{{ '%.2f'|format(log.cost) if log and log.cost is not none else '' }}" placeholder="e.g. 250.00">
+  </div>
+  <div class="span-2">
+    <label>Description <span class="muted">(required)</span></label>
+    <input name="description" value="{{ log.description if log else '' }}" placeholder="e.g. Annual service, blade inspection" required>
+  </div>
+  <div>
+    <label>Next service due <span class="muted">— optional</span></label>
+    <input type="date" name="next_service_date" value="{{ log.next_service_date.isoformat() if log and log.next_service_date else '' }}">
+  </div>
+  <div></div>
+  <div class="span-2">
+    <label>Notes <span class="muted">— optional</span></label>
+    <textarea name="notes" rows="3">{{ log.notes or '' if log else '' }}</textarea>
+  </div>
+</div>
+<div class="actions-row">
+  <button>Save</button>
+  <a class="button-link btn-secondary" href="{{ url_for('maintenance') }}">Cancel</a>
+</div>
+</form>
+</div>
+{% endblock %}
