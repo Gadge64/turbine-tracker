@@ -1,130 +1,212 @@
-from __future__ import annotations
+# This is the main Python file for the Turbine Tracker web app.
+# Flask is a web "framework" — a toolkit that handles the boring parts of
+# building a website (receiving requests, sending responses, sessions, etc.)
+# so you can focus on your actual application logic.
+#
+# This single file contains:
+#   - The database models (User, TurbineEntry, MaintenanceLog)
+#   - All the web routes (each URL the site responds to)
+#   - Helper functions used by those routes
+#
+# When a user visits a URL like /dashboard, Flask finds the matching @app.route
+# decorator below, runs the Python function, and sends the result back as a webpage.
 
-import csv
-import datetime
-import os
-import shutil
-from functools import wraps
-from io import StringIO
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from __future__ import annotations  # Allows type hints to reference classes defined later in the file
 
+# Standard Python libraries — these come built into Python, no installation needed
+import csv             # Read/write comma-separated value files
+import datetime        # Work with dates and times
+import os              # Interact with the operating system (file paths, environment variables)
+import shutil          # High-level file operations (copy, move)
+from functools import wraps   # Used when creating decorator functions (login_required, admin_required)
+from io import StringIO       # Treat a string as if it were a file — used for CSV export
+from pathlib import Path      # Modern way to work with file system paths
+from typing import Any, Dict, List, Optional, Tuple  # Type hints that make the code easier to read
+
+# Flask — the web framework
 from flask import (
-    Flask,
-    Response,
-    abort,
-    flash,
-    redirect,
-    render_template,
-    request,
-    send_file,
-    session,
-    url_for,
+    Flask,           # The main application class
+    Response,        # Used to build custom HTTP responses (e.g. CSV downloads)
+    abort,           # Immediately stop and return an error page (403, 404, etc.)
+    flash,           # Store a one-time message to show the user on the next page
+    redirect,        # Tell the browser to go to a different URL
+    render_template, # Load an HTML template file and fill in the variables
+    request,         # The incoming HTTP request — contains form data, URL args, files
+    send_file,       # Send a file to the browser (for downloads)
+    session,         # A dictionary that persists between requests for one browser session
+    url_for,         # Build a URL from a route function name (avoids hard-coding URLs)
 )
-from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect
-from sqlalchemy import func, text
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask_sqlalchemy import SQLAlchemy   # Connects Flask to a database using Python objects
+from flask_wtf.csrf import CSRFProtect   # Protects forms against Cross-Site Request Forgery attacks
+from sqlalchemy import func, text        # SQL functions (SUM, COUNT) and raw SQL queries
+from werkzeug.security import check_password_hash, generate_password_hash  # Secure password hashing
 
+# ── App setup ──────────────────────────────────────────────────────────────────
+# Create the Flask application object. instance_relative_config=True tells Flask
+# to look for the database and config files in the "instance/" folder (not the project root),
+# which is good practice because instance/ is ignored by git.
 app = Flask(__name__, instance_relative_config=True)
+
+# SECRET_KEY is used to sign session cookies so they cannot be tampered with.
+# In production this should be a long random string set as an environment variable.
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or "dev-only-insecure-key"
+
+# Tell SQLAlchemy where the database file lives.
+# sqlite:/// means a local file-based database — no separate database server needed.
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(app.instance_path, "wind.db")
+
+# Disable a SQLAlchemy feature that tracks every change to objects — it slows things
+# down and we don't need it.
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Make sure the instance/ folder exists before we try to use it.
 os.makedirs(app.instance_path, exist_ok=True)
 
+# Create the database object that we'll use throughout the app to query and save data.
 db = SQLAlchemy(app)
+
+# Enable CSRF protection — this automatically adds a hidden token to every form
+# and rejects submissions that don't include it, preventing a common web attack.
 csrf = CSRFProtect(app)
 
 
+# ── Database models ────────────────────────────────────────────────────────────
+# A "model" is a Python class that maps to a table in the database.
+# Each attribute defined with db.Column() becomes a column in that table.
+# SQLAlchemy automatically creates the SQL table from these class definitions.
+
 class User(db.Model):
+    # Each user gets a unique integer ID assigned automatically by the database.
     id = db.Column(db.Integer, primary_key=True)
 
+    # Login credentials — username must be unique across all users.
+    # We never store the actual password, only a cryptographic hash of it.
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    is_admin = db.Column(db.Integer, nullable=False, default=0)
+    is_admin = db.Column(db.Integer, nullable=False, default=0)  # 1 = admin, 0 = regular user
 
+    # Personal contact information
     full_name = db.Column(db.String(200), nullable=True)
     phone_number = db.Column(db.String(50), nullable=True)
 
+    # Postal address fields — split into parts so they can be searched/displayed separately
     address_line1 = db.Column(db.String(200), nullable=True)
     address_line2 = db.Column(db.String(200), nullable=True)
     town_city = db.Column(db.String(100), nullable=True)
     county = db.Column(db.String(100), nullable=True)
     eircode = db.Column(db.String(20), nullable=True)
 
+    # MPRN = Meter Point Reference Number — the unique identifier for an electricity meter in Ireland
     mprn = db.Column(db.String(20), nullable=True)
 
-    share_phone_public = db.Column(db.Integer, nullable=False, default=0)
-    share_address_public = db.Column(db.Integer, nullable=False, default=0)
+    # Privacy settings — users can choose whether to show their phone/address to other members
+    share_phone_public = db.Column(db.Integer, nullable=False, default=0)    # 1 = visible, 0 = hidden
+    share_address_public = db.Column(db.Integer, nullable=False, default=0)  # 1 = visible, 0 = hidden
 
+    # Wind turbine hardware details
     turbine_model = db.Column(db.String(200), nullable=True)
-    turbine_capacity_kw = db.Column(db.Float, nullable=True)
+    turbine_capacity_kw = db.Column(db.Float, nullable=True)      # How many kilowatts the turbine can generate
     turbine_size_notes = db.Column(db.String(200), nullable=True)
-    inverter_model = db.Column(db.String(200), nullable=True)
-    inverter_model_2 = db.Column(db.String(200), nullable=True)
-    install_date = db.Column(db.Date, nullable=True)
-    system_notes = db.Column(db.String(500), nullable=True)
-    service_notes = db.Column(db.String(1500), nullable=True)
+    inverter_model = db.Column(db.String(200), nullable=True)     # Inverter converts DC to AC electricity
+    inverter_model_2 = db.Column(db.String(200), nullable=True)   # Second inverter for dual-inverter setups
+    install_date = db.Column(db.Date, nullable=True)              # When the turbine was installed
+    system_notes = db.Column(db.String(500), nullable=True)       # Free-text notes about the system
+    service_notes = db.Column(db.String(1500), nullable=True)     # Notes about past servicing
 
+    # This creates a virtual link to all TurbineEntry rows belonging to this user.
+    # Accessing user.entries gives you a list of all their monthly readings.
+    # backref="user" means you can also do entry.user to get back to the User object.
     entries = db.relationship("TurbineEntry", backref="user", lazy=True)
 
     def share_phone(self) -> bool:
+        # Returns True if this user has opted in to sharing their phone number publicly
         return bool(self.share_phone_public)
 
     def share_address(self) -> bool:
+        # Returns True if this user has opted in to sharing their address publicly
         return bool(self.share_address_public)
 
 
+# TurbineEntry represents one month's worth of meter readings for a single user.
+# One user has many entries — one per calendar month they record data for.
 class TurbineEntry(db.Model):
+    # This constraint tells the database to refuse duplicate rows — you can't
+    # have two entries for the same user in the same year and month.
     __table_args__ = (
         db.UniqueConstraint("user_id", "year", "month", name="uq_user_year_month"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    # ForeignKey links this entry to a specific user in the user table
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
+    # Which month this entry covers
     year = db.Column(db.Integer, nullable=False)
-    month = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.Date, nullable=False)
+    month = db.Column(db.Integer, nullable=False)   # 1–12
+    date = db.Column(db.Date, nullable=False)        # Always set to the 1st of the month
 
-    import_start_kwh = db.Column(db.Float, nullable=True)
-    import_end_kwh = db.Column(db.Float, nullable=True)
-    export_start_kwh = db.Column(db.Float, nullable=True)
-    export_end_kwh = db.Column(db.Float, nullable=True)
+    # ── Meter readings ──
+    # The import meter measures electricity bought from the grid.
+    # The export meter measures electricity sold back to the grid.
+    # Both are "cumulative" — they count up from zero, never reset.
+    # We record the reading at the START and END of the month,
+    # then subtract to get how much was used that month.
+    import_start_kwh = db.Column(db.Float, nullable=True)  # Grid import meter at start of month
+    import_end_kwh = db.Column(db.Float, nullable=True)    # Grid import meter at end of month
+    export_start_kwh = db.Column(db.Float, nullable=True)  # Grid export meter at start of month
+    export_end_kwh = db.Column(db.Float, nullable=True)    # Grid export meter at end of month
 
-    inverter_total_kwh = db.Column(db.Float, nullable=True)
-    inverter_total_kwh_2 = db.Column(db.Float, nullable=True)
-    e_mon_kwh = db.Column(db.Float, nullable=True)
-    e_mon_kwh_2 = db.Column(db.Float, nullable=True)
-    co2_kg = db.Column(db.Float, nullable=True)
-    used_from_wind_kwh = db.Column(db.Float, nullable=True)
-    tariff_rate = db.Column(db.Float, nullable=True)
-    notes = db.Column(db.String(1000), nullable=True)
+    # ── Inverter / E-mon readings ──
+    # E-mon = energy monitor attached to the turbine — records how much the turbine generated THIS month.
+    # Inverter total = the inverter's own running total since installation.
+    # Some users have two inverters (dual-inverter setup), so there are _2 variants for each.
+    inverter_total_kwh = db.Column(db.Float, nullable=True)   # Inverter 1 lifetime running total
+    inverter_total_kwh_2 = db.Column(db.Float, nullable=True) # Inverter 2 lifetime running total
+    e_mon_kwh = db.Column(db.Float, nullable=True)            # E-mon 1 generated this month
+    e_mon_kwh_2 = db.Column(db.Float, nullable=True)          # E-mon 2 generated this month (dual only)
+
+    co2_kg = db.Column(db.Float, nullable=True)             # CO₂ offset in kilograms (optional)
+    used_from_wind_kwh = db.Column(db.Float, nullable=True) # Manual override for wind used in house
+    tariff_rate = db.Column(db.Float, nullable=True)        # Electricity price in €/kWh this month
+    notes = db.Column(db.String(1000), nullable=True)       # Free-text notes
+
+    # ── Computed properties ──
+    # These are methods (functions) on the entry object that calculate derived values.
+    # They are NOT stored in the database — they are re-calculated each time you call them.
 
     def import_total_kwh(self) -> Optional[float]:
+        # How much electricity was imported from the grid this month (end reading minus start reading).
+        # Returns None if either reading is missing.
         if self.import_start_kwh is None or self.import_end_kwh is None:
             return None
         return self.import_end_kwh - self.import_start_kwh
 
     def export_total_kwh(self) -> Optional[float]:
+        # How much electricity was exported to the grid this month (end reading minus start reading).
         if self.export_start_kwh is None or self.export_end_kwh is None:
             return None
         return self.export_end_kwh - self.export_start_kwh
 
     def e_mon_safe(self) -> Optional[float]:
+        # Returns E-mon 1 as a float, or None if not entered.
+        # The "safe" suffix means it won't crash if the value is missing.
         return None if self.e_mon_kwh is None else float(self.e_mon_kwh)
 
     def e_mon_2_safe(self) -> Optional[float]:
+        # Returns E-mon 2 as a float, or None if not entered.
         return None if self.e_mon_kwh_2 is None else float(self.e_mon_kwh_2)
 
     def e_mon_total_kwh(self) -> Optional[float]:
+        # Total generation from both E-mons combined.
+        # If neither is entered, returns None (no data).
+        # If only one is entered, that one counts as the total.
         e1, e2 = self.e_mon_safe(), self.e_mon_2_safe()
         if e1 is None and e2 is None:
             return None
         return (e1 or 0.0) + (e2 or 0.0)
 
     def inverter_total_combined(self) -> Optional[float]:
+        # Sum of both inverter running totals.
         v1 = None if self.inverter_total_kwh is None else float(self.inverter_total_kwh)
         v2 = None if self.inverter_total_kwh_2 is None else float(self.inverter_total_kwh_2)
         if v1 is None and v2 is None:
@@ -132,24 +214,33 @@ class TurbineEntry(db.Model):
         return (v1 or 0.0) + (v2 or 0.0)
 
     def co2_safe(self) -> Optional[float]:
+        # Returns CO₂ as a float, or None if not entered.
         return None if self.co2_kg is None else float(self.co2_kg)
 
     def tariff_safe(self) -> float:
+        # Returns the tariff rate, or a default of €0.195/kWh if not entered.
         return float(self.tariff_rate) if self.tariff_rate is not None else 0.195
 
     def used_from_wind_auto_kwh(self) -> Optional[float]:
+        # Automatically estimates how much wind energy was used in the house.
+        # Formula: generation - export = what stayed in the house.
+        # If you generated 500 kWh and exported 200 kWh, you used 300 kWh from wind.
         e_mon = self.e_mon_total_kwh()
         export_total = self.export_total_kwh()
         if e_mon is None or export_total is None:
             return None
-        return max(0.0, e_mon - export_total)
+        return max(0.0, e_mon - export_total)  # max(0) ensures we never return a negative number
 
     def used_from_wind_effective_kwh(self) -> Optional[float]:
+        # Returns wind used in the house — prefers a manual override if one was entered,
+        # otherwise falls back to the automatic calculation above.
         if self.used_from_wind_kwh is not None:
             return max(0.0, float(self.used_from_wind_kwh))
         return self.used_from_wind_auto_kwh()
 
     def house_total_wind_grid_kwh(self) -> Optional[float]:
+        # Total household electricity consumption = wind used in house + grid imported.
+        # Formula: (generation - export) + import
         e_mon = self.e_mon_total_kwh()
         export_total = self.export_total_kwh()
         import_total = self.import_total_kwh()
@@ -158,12 +249,17 @@ class TurbineEntry(db.Model):
         return (e_mon - export_total) + import_total
 
     def value_at_tariff(self) -> Optional[float]:
+        # The monetary value of the electricity generated, in euros.
+        # Formula: kWh generated × price per kWh
         e_mon = self.e_mon_total_kwh()
         if e_mon is None:
             return None
         return e_mon * self.tariff_safe()
 
     def self_sufficiency_pct(self) -> Optional[float]:
+        # What percentage of the household's electricity came from the wind turbine?
+        # Formula: (wind used in house / total house consumption) × 100
+        # Capped at 100% — can't be more than fully self-sufficient.
         wind_used = self.used_from_wind_effective_kwh()
         total = self.house_total_wind_grid_kwh()
         if wind_used is None or total is None or total <= 0:
@@ -171,29 +267,40 @@ class TurbineEntry(db.Model):
         return min(wind_used / total * 100.0, 100.0)
 
 
+# MaintenanceLog records when the turbine was serviced, inspected, or repaired.
 class MaintenanceLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    description = db.Column(db.String(500), nullable=False)
-    cost = db.Column(db.Float, nullable=True)
-    next_service_date = db.Column(db.Date, nullable=True)
-    notes = db.Column(db.String(500), nullable=True)
+    date = db.Column(db.Date, nullable=False)              # When the maintenance happened
+    description = db.Column(db.String(500), nullable=False) # What was done
+    cost = db.Column(db.Float, nullable=True)              # How much it cost (optional)
+    next_service_date = db.Column(db.Date, nullable=True)  # When the next service is due
+    notes = db.Column(db.String(500), nullable=True)       # Extra notes
 
+
+# ── Database initialisation ────────────────────────────────────────────────────
 
 def init_db() -> None:
+    # This function is called once when the app starts (see the bottom of this file).
+    # It creates the database tables if they don't already exist, then runs
+    # any necessary schema updates and safety checks.
     with app.app_context():
-        db.create_all()
-        ensure_user_schema_sqlite()
-        ensure_entry_schema_sqlite()
-        ensure_at_least_one_admin()
-        ensure_recovery_admin()
-        create_daily_backup()
+        db.create_all()            # Create tables from the models above (safe to run if tables already exist)
+        ensure_user_schema_sqlite()  # Add any new columns to the user table
+        ensure_entry_schema_sqlite() # Add any new columns to the turbine_entry table
+        ensure_at_least_one_admin()  # Make sure there's always at least one admin account
+        ensure_recovery_admin()      # Create/update the emergency recovery account if configured
+        create_daily_backup()        # Back up the database on first start of the day
 
 
 def ensure_user_schema_sqlite() -> None:
+    # SQLite (the database engine used here) does not support removing columns,
+    # so schema changes can only ADD new columns. This function checks which columns
+    # already exist in the user table, then adds any that are missing.
+    # This is the migration system — whenever a new column is added to the User model,
+    # it must also be listed here so existing databases get updated automatically.
     rows = db.session.execute(text("PRAGMA table_info(user)")).fetchall()
-    existing = {r[1] for r in rows}
+    existing = {r[1] for r in rows}  # Build a set of existing column names
     desired: Dict[str, str] = {
         "is_admin": "INTEGER",
         "full_name": "TEXT",
@@ -217,11 +324,13 @@ def ensure_user_schema_sqlite() -> None:
     }
     for col, sql_type in desired.items():
         if col not in existing:
+            # Run the SQL ALTER TABLE command to add the missing column
             db.session.execute(text(f"ALTER TABLE user ADD COLUMN {col} {sql_type}"))
-    db.session.commit()
+    db.session.commit()  # Save the changes
 
 
 def ensure_entry_schema_sqlite() -> None:
+    # Same pattern as above — ensures the turbine_entry table has all required columns.
     rows = db.session.execute(text("PRAGMA table_info(turbine_entry)")).fetchall()
     existing = {r[1] for r in rows}
     desired: Dict[str, str] = {
@@ -241,6 +350,10 @@ def ensure_entry_schema_sqlite() -> None:
 
 
 def ensure_recovery_admin() -> None:
+    # Creates or updates an emergency admin account using credentials stored in
+    # environment variables. This lets you regain access if you get locked out.
+    # Set RECOVERY_ADMIN_USERNAME and RECOVERY_ADMIN_PASSWORD in run_recovery.bat.
+    # If neither variable is set, this function does nothing.
     username = os.environ.get("RECOVERY_ADMIN_USERNAME")
     password = os.environ.get("RECOVERY_ADMIN_PASSWORD")
     if not username or not password:
@@ -248,6 +361,7 @@ def ensure_recovery_admin() -> None:
 
     user = User.query.filter_by(username=username).first()
     if not user:
+        # Create the recovery account from scratch
         user = User(
             username=username,
             password_hash=generate_password_hash(password),
@@ -256,14 +370,18 @@ def ensure_recovery_admin() -> None:
         )
         db.session.add(user)
     else:
+        # Update the password in case it changed in the environment variable
         user.password_hash = generate_password_hash(password)
         user.is_admin = 1
     db.session.commit()
 
 
 def ensure_at_least_one_admin() -> None:
+    # Safety net — if the database somehow has no admin users, this promotes
+    # the "gadge" account (if it exists) or the very first user registered.
+    # This prevents a situation where nobody can access the admin panel.
     if User.query.filter_by(is_admin=1).first():
-        return
+        return  # At least one admin already exists — nothing to do
     gadge = User.query.filter_by(username="gadge").first()
     if gadge:
         gadge.is_admin = 1
@@ -275,36 +393,46 @@ def ensure_at_least_one_admin() -> None:
         db.session.commit()
 
 
+
+# ── Backup helpers ─────────────────────────────────────────────────────────────
+
 def database_path() -> Path:
+    # Returns the full file path to the SQLite database file.
     return Path(app.instance_path) / "wind.db"
 
 
 def backups_dir() -> Path:
+    # Returns the path to the backups folder, creating it if it doesn't exist.
     path = Path(app.instance_path) / "backups"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def backup_filename(prefix: str = "wind_backup") -> str:
+    # Generates a filename like "wind_backup_2025-06-01_14-30-00.db"
+    # The timestamp ensures no two backups ever have the same name.
     now = datetime.datetime.now()
     return f"{prefix}_{now:%Y-%m-%d_%H-%M-%S}.db"
 
 
 def create_database_backup(prefix: str = "wind_backup") -> Optional[Path]:
+    # Creates a safe copy of the database file.
+    # Returns the path to the newly created backup, or None if the database doesn't exist yet.
     source = database_path()
     if not source.exists():
         return None
 
     destination = backups_dir() / backup_filename(prefix)
 
-    # sqlite backup API gives a safer live copy than raw file copy.
+    # Use SQLite's built-in backup API rather than a raw file copy.
+    # This is safer because it works even while the database is actively being written to.
     connection = db.engine.raw_connection()
     try:
         source_sqlite = connection.connection
         import sqlite3
         backup_conn = sqlite3.connect(destination)
         try:
-            source_sqlite.backup(backup_conn)
+            source_sqlite.backup(backup_conn)  # Copies all data safely
         finally:
             backup_conn.close()
     finally:
@@ -314,14 +442,16 @@ def create_database_backup(prefix: str = "wind_backup") -> Optional[Path]:
 
 
 def create_daily_backup() -> Optional[Path]:
+    # Called on every request (see @app.before_request below), but only actually
+    # creates a backup once per day — if today's backup already exists, it returns that one.
     source = database_path()
     if not source.exists():
         return None
 
-    today = datetime.date.today().isoformat()
+    today = datetime.date.today().isoformat()  # e.g. "2025-06-01"
     existing_today = list(backups_dir().glob(f"daily_backup_{today}_*.db"))
     if existing_today:
-        return existing_today[0]
+        return existing_today[0]  # Already backed up today — skip
 
     return create_database_backup(prefix=f"daily_backup_{today}")
 
