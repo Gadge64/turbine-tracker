@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Profile — {{ user.username }}</h2>
+<div class="card">
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="form-grid two">
+<div><label>Name</label><input name="full_name" value="{{ user.full_name or '' }}"></div>
+<div><label>Phone</label><input name="phone_number" value="{{ user.phone_number or '' }}"></div>
+<div><label>Address line 1</label><input name="address_line1" value="{{ user.address_line1 or '' }}"></div>
+<div><label>Address line 2</label><input name="address_line2" value="{{ user.address_line2 or '' }}"></div>
+<div><label>Town/City</label><input name="town_city" value="{{ user.town_city or '' }}"></div>
+<div><label>County</label><input name="county" value="{{ user.county or '' }}"></div>
+<div><label>Eircode</label><input name="eircode" value="{{ user.eircode or '' }}"></div>
+<div><label>MPRN</label><input name="mprn" value="{{ user.mprn or '' }}"></div>
+<div><label>Privacy</label>
+  <label><input type="checkbox" name="share_phone_public" {% if user.share_phone_public %}checked{% endif %}> Show phone</label>
+  <label><input type="checkbox" name="share_address_public" {% if user.share_address_public %}checked{% endif %}> Show address</label>
+</div>
+<div><label>Turbine model</label><input name="turbine_model" value="{{ user.turbine_model or '' }}"></div>
+<div><label>Turbine capacity (kW)</label><input type="number" step="any" name="turbine_capacity_kw" value="{{ user.turbine_capacity_kw if user.turbine_capacity_kw is not none else '' }}"></div>
+<div><label>Turbine size notes</label><input name="turbine_size_notes" value="{{ user.turbine_size_notes or '' }}"></div>
+<div><label>Inverter 1 model</label><input name="inverter_model" value="{{ user.inverter_model or '' }}"></div>
+<div><label>Inverter 2 model</label><input name="inverter_model_2" value="{{ user.inverter_model_2 or '' }}"></div>
+<div><label>Install date</label><input type="date" name="install_date" value="{{ user.install_date or '' }}"></div>
+<div class="span-2"><label>System notes</label><textarea name="system_notes" rows="3">{{ user.system_notes or '' }}</textarea></div>
+<div class="span-2"><label>Service notes</label><textarea name="service_notes" rows="4">{{ user.service_notes or '' }}</textarea></div>
+<div><label>Admin access</label><label><input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %}> Grant admin</label></div>
+<div><label>Set new password <span class="muted">(leave blank to keep current)</span></label><input type="password" name="new_password" autocomplete="new-password"></div>
+</div>
+<div class="actions-row"><button>Save</button><a class="button-link btn-secondary" href="{{ url_for('admin_users') }}">Cancel</a></div>
+</form>
+</div>
+{% endblock %}

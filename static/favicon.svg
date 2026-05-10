@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#1e293b"/>
+  <!-- Tower -->
+  <polygon points="15.1,28 16.9,28 16.4,14.5 15.6,14.5" fill="#94a3b8"/>
+  <!-- Nacelle -->
+  <rect x="14.5" y="12" width="5.5" height="3" rx="1" fill="#64748b"/>
+  <!-- Rotor centred at hub -->
+  <g transform="translate(16,13.5)">
+    <style>@keyframes fspin{to{transform:rotate(360deg)}}.fblade{animation:fspin 3s linear infinite;transform-origin:0 0}</style>
+    <g class="fblade">
+      <path d="M-.9,1.2 C-1.4,-.5 -.7,-6 0,-9.5 C.7,-6 1.4,-.5 .9,1.2 Z" fill="#e2e8f0"/>
+      <path d="M-.9,1.2 C-1.4,-.5 -.7,-6 0,-9.5 C.7,-6 1.4,-.5 .9,1.2 Z" fill="#e2e8f0" transform="rotate(120)"/>
+      <path d="M-.9,1.2 C-1.4,-.5 -.7,-6 0,-9.5 C.7,-6 1.4,-.5 .9,1.2 Z" fill="#e2e8f0" transform="rotate(240)"/>
+      <circle r="1.4" fill="#475569"/>
+    </g>
+  </g>
+</svg>

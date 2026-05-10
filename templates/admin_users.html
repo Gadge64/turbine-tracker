@@ -10,6 +10,7 @@
 {% for u in users %}
 <tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.full_name or "" }}</td><td>{% if u.is_admin %}Yes{% else %}No{% endif %}</td>
 <td>
+  <a href="{{ url_for('admin_edit_profile', user_id=u.id) }}">Edit profile</a> ·
   <a href="{{ url_for('admin_reset_password', user_id=u.id) }}">Reset password</a> ·
   <a href="{{ url_for('admin_rename_user', user_id=u.id) }}">Rename</a> ·
   <a href="{{ url_for('admin_clone_user', user_id=u.id) }}">Clone</a>

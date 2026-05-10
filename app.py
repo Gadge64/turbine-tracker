@@ -1390,6 +1390,47 @@ def admin_batch_users():
     return render_template("admin_batch_users.html", results=results, raw_input=raw_input)
 
 
+@app.route("/admin/users/<int:user_id>/edit-profile", methods=["GET", "POST"])
+@admin_required
+def admin_edit_profile(user_id: int):
+    u = User.query.get_or_404(user_id)
+    if request.method == "POST":
+        u.full_name = request.form.get("full_name") or None
+        u.phone_number = request.form.get("phone_number") or None
+        u.address_line1 = request.form.get("address_line1") or None
+        u.address_line2 = request.form.get("address_line2") or None
+        u.town_city = request.form.get("town_city") or None
+        u.county = request.form.get("county") or None
+        u.eircode = request.form.get("eircode") or None
+        u.mprn = request.form.get("mprn") or None
+        u.share_phone_public = 1 if request.form.get("share_phone_public") else 0
+        u.share_address_public = 1 if request.form.get("share_address_public") else 0
+        u.turbine_model = request.form.get("turbine_model") or None
+        cap_raw = request.form.get("turbine_capacity_kw", "").strip()
+        try:
+            u.turbine_capacity_kw = float(cap_raw) if cap_raw else None
+        except ValueError:
+            u.turbine_capacity_kw = None
+        u.turbine_size_notes = request.form.get("turbine_size_notes") or None
+        u.inverter_model = request.form.get("inverter_model") or None
+        u.inverter_model_2 = request.form.get("inverter_model_2") or None
+        date_raw = request.form.get("install_date", "").strip()
+        try:
+            u.install_date = datetime.date.fromisoformat(date_raw) if date_raw else None
+        except ValueError:
+            u.install_date = None
+        u.system_notes = request.form.get("system_notes") or None
+        u.service_notes = request.form.get("service_notes") or None
+        u.is_admin = 1 if request.form.get("is_admin") else 0
+        new_pw = request.form.get("new_password", "").strip()
+        if new_pw:
+            u.password_hash = generate_password_hash(new_pw)
+        db.session.commit()
+        flash(f"Profile for {u.username} updated.", "success")
+        return redirect(url_for("admin_users"))
+    return render_template("admin_edit_profile.html", user=u)
+
+
 @app.route("/community")
 @login_required
 def community():
