@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>How to Use Turbine Tracker</h2>
+
+{# ── Getting started ── #}
+<div class="card">
+  <h3>Getting started</h3>
+  <p>Once you log in, you land on your personal <strong>Dashboard</strong>. If this is your first visit, it will be empty — that's normal. Follow the steps below to start populating your data.</p>
+  <p>The site works on any device — phone, tablet, or desktop — and you can log in from anywhere.</p>
+</div>
+
+{# ── Step 1: Set up your profile ── #}
+<div class="card">
+  <h3>Step 1 — Set up your profile</h3>
+  <p>Before adding readings, fill in your turbine details so the rest of the group can see what equipment you're running.</p>
+  <ol style="padding-left:1.4em;line-height:2">
+    <li>Click <strong>Profile</strong> in the top menu</li>
+    <li>Click <strong>Edit Profile</strong></li>
+    <li>Fill in your turbine model, capacity (kW), inverter model, and installation date</li>
+    <li>Add your address and MPRN if you're happy for other members to see them</li>
+    <li>Click <strong>Save</strong></li>
+  </ol>
+  <p class="muted" style="margin-top:8px">Your installation date helps the site calculate missing months and keep your records complete.</p>
+</div>
+
+{# ── Step 2: Add your first monthly entry ── #}
+<div class="card">
+  <h3>Step 2 — Add your first monthly entry</h3>
+  <p>Each month you record four meter readings. These are the numbers shown on the physical meters on your property.</p>
+
+  <h4>Where to find the readings</h4>
+  <ul style="padding-left:1.4em;line-height:2;margin-bottom:12px">
+    <li><strong>Import meter</strong> — the ESB meter on your wall that counts electricity bought from the grid. Write down the reading at the start of the month, then again at the end.</li>
+    <li><strong>Export meter</strong> — counts electricity sent back to the grid. Same process — start and end of month.</li>
+    <li><strong>E-mon reading</strong> — the energy monitor attached to your turbine. This shows how many kWh your turbine generated this month (not a running total — just this month's figure).</li>
+    <li><strong>Tariff rate</strong> — your current electricity price in €/kWh. Check your electricity bill. A typical rate is around €0.40/kWh.</li>
+  </ul>
+
+  <h4>How to add an entry</h4>
+  <ol style="padding-left:1.4em;line-height:2">
+    <li>Click <strong>Add Entry</strong> in the top menu</li>
+    <li>Select the correct year and month</li>
+    <li>Enter your import meter reading at the <em>start</em> of that month, then at the <em>end</em></li>
+    <li>Do the same for your export meter</li>
+    <li>Enter your E-mon kWh figure for the month</li>
+    <li>Enter your tariff rate (or leave it — it will default to the last rate you used)</li>
+    <li>Click <strong>Save</strong></li>
+  </ol>
+  <p class="muted">The site automatically calculates your totals, self-sufficiency percentage, and euro value from these four figures. You don't need to do any maths yourself.</p>
+</div>
+
+{# ── Step 3: Reading your dashboard ── #}
+<div class="card">
+  <h3>Step 3 — Reading your dashboard</h3>
+  <p>Once you have a few months of data entered, your dashboard will show:</p>
+  <ul style="padding-left:1.4em;line-height:2">
+    <li><strong>Generation chart</strong> — how many kWh your turbine produced each month</li>
+    <li><strong>Self-sufficiency %</strong> — what percentage of your home's electricity came from your own turbine (higher is better)</li>
+    <li><strong>Value @ tariff</strong> — estimated euro value of the electricity your turbine generated</li>
+    <li><strong>CO₂ saved</strong> — estimated carbon offset based on your generation</li>
+    <li><strong>Year tables</strong> — a full breakdown by month for each year</li>
+    <li><strong>Missing months</strong> — if any months are gaps in your records, they'll be flagged so you can go back and fill them in</li>
+  </ul>
+</div>
+
+{# ── Step 4: Logging maintenance ── #}
+<div class="card">
+  <h3>Step 4 — Logging maintenance</h3>
+  <p>Use the <strong>Maintenance</strong> page to keep a record of any servicing, inspections, or repairs done on your turbine.</p>
+  <ol style="padding-left:1.4em;line-height:2">
+    <li>Click <strong>Maintenance</strong> in the top menu</li>
+    <li>Click <strong>Add entry</strong></li>
+    <li>Enter the date, a description of the work done, and the cost (optional)</li>
+    <li>If you know when the next service is due, enter that date too — you'll get a reminder on your dashboard</li>
+  </ol>
+</div>
+
+{# ── Comparing with others ── #}
+<div class="card">
+  <h3>Comparing with the group</h3>
+  <p>The <strong>Compare</strong> page lets you plot your generation against any other member on the same chart — useful for spotting if your turbine is underperforming.</p>
+  <p>The <strong>Community</strong> page shows combined group totals and a breakdown by member for the selected year.</p>
+  <p>The <strong>Leaderboard</strong> ranks members by generation, self-sufficiency, and logging consistency.</p>
+</div>
+
+{# ── Tips ── #}
+<div class="card">
+  <h3>Tips for keeping good records</h3>
+  <ul style="padding-left:1.4em;line-height:2">
+    <li>Take your meter readings on the <strong>same day each month</strong> — the 1st is a good habit</li>
+    <li>If you miss a month, add it anyway — you can enter any past month at any time</li>
+    <li>Use the <strong>Notes</strong> field to flag anything unusual that month (e.g. turbine was offline for 2 weeks)</li>
+    <li>You can download all your data as a CSV file any time from your Dashboard → Export</li>
+  </ul>
+</div>
+
+{# ── Admin how-to — only shown to admin users ── #}
+{% if nav_user and nav_user.is_admin %}
+<div class="card" style="border-color:#f59e0b">
+  <h3>⚙️ Admin guide <span class="muted" style="font-weight:400;font-size:.85rem">— visible to admins only</span></h3>
+
+  <h4>Creating a new member account</h4>
+  <ol style="padding-left:1.4em;line-height:2;margin-bottom:16px">
+    <li>Go to <strong>Admin → Users</strong></li>
+    <li>Click <strong>Add new user</strong></li>
+    <li>Enter a username (first name in lowercase works well), a password, and their full name</li>
+    <li>Click <strong>Save</strong> — the account is created immediately</li>
+    <li>Their password will appear on the <strong>Credentials sheet</strong> so you can print it and hand it to them</li>
+  </ol>
+
+  <h4>Creating multiple accounts at once</h4>
+  <ol style="padding-left:1.4em;line-height:2;margin-bottom:16px">
+    <li>Go to <strong>Admin → Batch add users</strong></li>
+    <li>Paste a list in the format: <code>Full Name, Turbine Model, Capacity kW</code> — one person per line</li>
+    <li>All accounts are created in one go with auto-generated usernames and passwords</li>
+  </ol>
+
+  <h4>Printing the credentials sheet</h4>
+  <ol style="padding-left:1.4em;line-height:2;margin-bottom:16px">
+    <li>Go to <strong>Admin → Users</strong></li>
+    <li>Click <strong>Credentials sheet</strong></li>
+    <li>Click <strong>Print / Save as PDF</strong> — the page formats itself cleanly for printing</li>
+    <li>Note: if a member has changed their own password, their row will show <em>"changed by user"</em> — use <strong>Edit Profile → Set new password</strong> to refresh it</li>
+  </ol>
+
+  <h4>Adding entries on behalf of a member</h4>
+  <ol style="padding-left:1.4em;line-height:2;margin-bottom:16px">
+    <li>Go to <strong>Admin → Users</strong> and click <strong>Edit Profile</strong> for that member</li>
+    <li>Or go to <strong>Members</strong>, click the member's name, then click <strong>Add entry for this user</strong></li>
+  </ol>
+
+  <h4>Excluding an account from charts and comparisons</h4>
+  <ol style="padding-left:1.4em;line-height:2;margin-bottom:16px">
+    <li>Go to <strong>Admin → Users → Edit Profile</strong> for that account</li>
+    <li>Tick <strong>Exclude from all charts &amp; comparisons</strong></li>
+    <li>Click <strong>Save</strong> — that account will no longer appear in community totals, the compare page, or the leaderboard</li>
+  </ol>
+
+  <h4>Managing backups</h4>
+  <ol style="padding-left:1.4em;line-height:2">
+    <li>The database is backed up automatically every day — no action needed</li>
+    <li>To download a backup manually, click <strong>Backup</strong> in the top menu</li>
+    <li>To browse all backups, go to <strong>Admin → Backups</strong></li>
+    <li>If you ever need to restore from a backup, contact your site administrator</li>
+  </ol>
+</div>
+{% endif %}
+
+{% endblock %}

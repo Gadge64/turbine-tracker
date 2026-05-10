@@ -1948,6 +1948,21 @@ def delete_maintenance(log_id: int):
     return redirect(url_for("maintenance"))
 
 
+@app.route("/about")
+@login_required
+def about():
+    # Simple page — just render the about template.
+    # The template itself checks if the user is admin and shows extra sections if so.
+    return render_template("about.html")
+
+
+@app.route("/howto")
+@login_required
+def howto():
+    # Same pattern — one template handles both member and admin views.
+    return render_template("howto.html")
+
+
 @app.route("/admin/credentials")
 @admin_required  # Only admins can access this page
 def admin_credentials():

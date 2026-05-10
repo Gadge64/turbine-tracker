@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>About Turbine Tracker</h2>
+
+{# ── What is it ── #}
+<div class="card">
+  <h3>What is Turbine Tracker?</h3>
+  <p>Turbine Tracker is a private members website built for our community of wind turbine owners. It gives each member their own account where they can log their monthly energy readings and see how their turbine is performing over time — all in one place, accessible from any device.</p>
+  <p>The site is live at <a href="https://gadge64.pythonanywhere.com" target="_blank">gadge64.pythonanywhere.com</a> and requires a login — no data is publicly visible.</p>
+</div>
+
+{# ── What members can do ── #}
+<div class="card">
+  <h3>What members can do</h3>
+  <div class="form-grid two">
+    <div>
+      <h4>📋 Log monthly readings</h4>
+      <p class="muted">Each month, members enter their meter figures — how much electricity their turbine generated, how much was exported to the grid, how much was imported, and their current electricity tariff rate.</p>
+    </div>
+    <div>
+      <h4>📊 View their dashboard</h4>
+      <p class="muted">Charts and tables show generation trends, self-sufficiency percentage, CO₂ offset saved, and the estimated euro value of their electricity over any time period.</p>
+    </div>
+    <div>
+      <h4>🔧 Track maintenance</h4>
+      <p class="muted">Members can log service visits, repairs, and upcoming service dates for their turbine, so nothing gets forgotten.</p>
+    </div>
+    <div>
+      <h4>📥 Download reports</h4>
+      <p class="muted">A printable annual report and a CSV data export are available at any time — useful for accountants, grant applications, or your own records.</p>
+    </div>
+    <div>
+      <h4>📈 Compare with others</h4>
+      <p class="muted">The comparison page lets members see how their turbine's output stacks up against the rest of the group, side by side on a chart.</p>
+    </div>
+    <div>
+      <h4>🏆 Leaderboard</h4>
+      <p class="muted">Members are ranked by annual generation, self-sufficiency, and how consistently they log their data each month.</p>
+    </div>
+  </div>
+</div>
+
+{# ── Community features ── #}
+<div class="card">
+  <h3>Community features</h3>
+  <p>The <strong>Community page</strong> shows combined group totals — total generation, exports, CO₂ saved, and estimated value across all members for any selected year.</p>
+  <p>Members can also view each other's turbine details such as model, capacity, and installer notes, to share knowledge and experience within the group.</p>
+</div>
+
+{# ── Admin section — only shown to admin users ── #}
+{# nav_user is the currently logged-in user, passed in from base.html #}
+{% if nav_user and nav_user.is_admin %}
+<div class="card" style="border-color:#f59e0b">
+  <h3>⚙️ Admin features <span class="muted" style="font-weight:400;font-size:.85rem">— visible to admins only</span></h3>
+  <div class="form-grid two">
+    <div>
+      <h4>👥 User management</h4>
+      <p class="muted">Admins can create, edit, rename, clone, and manage all member accounts from the Admin panel.</p>
+    </div>
+    <div>
+      <h4>🔑 Credentials sheet</h4>
+      <p class="muted">A printable sheet lists all usernames and last admin-set passwords — handy for handing out login details to new members.</p>
+    </div>
+    <div>
+      <h4>📝 Data entry on behalf of members</h4>
+      <p class="muted">Admins can add or edit monthly entries for any member — useful for members who are not comfortable using the site themselves.</p>
+    </div>
+    <div>
+      <h4>💾 Backups</h4>
+      <p class="muted">The database is backed up automatically every day. Admins can browse and download all backups from the Admin → Backups page.</p>
+    </div>
+    <div>
+      <h4>📊 Analytics exclusion</h4>
+      <p class="muted">Any account can be excluded from all charts and community totals — useful for admin or test accounts that should not affect the group figures.</p>
+    </div>
+    <div>
+      <h4>📦 Bulk user creation</h4>
+      <p class="muted">Admins can create multiple accounts at once from a simple list — no need to fill in each form individually.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Footer note ── #}
+<div class="card">
+  <p class="muted">Turbine Tracker was built specifically for this community group. All data is private and stored securely. If you have questions or need help, contact your group admin.</p>
+</div>
+
+{% endblock %}
