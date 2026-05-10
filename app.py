@@ -1962,6 +1962,39 @@ def admin_credentials():
     return render_template("admin_credentials.html", users=users, now=generated_on)
 
 
+@app.route("/deploy")
+def deploy_webhook():
+    # This is a hidden deployment route — it tells the live server to pull the
+    # latest code from GitHub. It is called automatically by deploy.bat after
+    # a git push, so you never need to visit it manually.
+    #
+    # It is protected by a secret token so that only our deploy script can
+    # trigger it. Anyone without the token gets a 403 Forbidden response.
+    import subprocess
+
+    # Read the expected secret from an environment variable called DEPLOY_SECRET.
+    # On PythonAnywhere this is set in the WSGI config file.
+    # Locally it is not set, so this route simply won't work locally (which is fine).
+    expected = os.environ.get("DEPLOY_SECRET", "")
+    received = request.args.get("secret", "")
+
+    # Reject the request if no secret is configured or it doesn't match
+    if not expected or received != expected:
+        abort(403)
+
+    # Run "git pull" in the project directory to download the latest code from GitHub.
+    # capture_output=True captures any error messages so we can return them.
+    result = subprocess.run(
+        ["git", "pull"],
+        cwd="/home/gadge64/turbine-tracker",  # The project folder on PythonAnywhere
+        capture_output=True,
+        text=True,
+    )
+
+    # Return the output of git pull so we can see in deploy.bat whether it worked
+    return f"git pull exited {result.returncode}\n{result.stdout}\n{result.stderr}", 200
+
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)

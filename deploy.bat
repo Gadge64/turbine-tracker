@@ -1,14 +1,14 @@
 @echo off
 :: deploy.bat
 :: Double-click this file to push all code changes to GitHub AND make them
-:: live on the website automatically. It does three things in order:
+:: live on the website automatically. It does three things:
 ::   1. Push the latest code to GitHub
-::   2. Tell PythonAnywhere to pull that code onto the live server
-::   3. Reload the website so visitors see the new version
+::   2. Tell the live server to pull that code (via a hidden /deploy route)
+::   3. Reload the website so visitors see the new version immediately
 
 cd /d "%~dp0"
 
-:: Check that the API key file exists before we do anything
+:: Check that the API key file exists before we start
 if not exist pa_api_key.txt (
     echo.
     echo  ERROR: pa_api_key.txt not found.
@@ -18,8 +18,11 @@ if not exist pa_api_key.txt (
     exit /b 1
 )
 
-:: Read the API key from the local file into a variable
+:: Read the PythonAnywhere API key and deploy secret from the local config file.
+:: These are stored locally and never pushed to GitHub.
 set /p PA_TOKEN=<pa_api_key.txt
+:: The deploy secret must match what is set as DEPLOY_SECRET on PythonAnywhere
+set DEPLOY_SECRET=turb1ne-depl0y-2026
 
 echo.
 echo  =============================================
@@ -33,7 +36,7 @@ git push origin master
 if errorlevel 1 (
     echo.
     echo  ERROR: Git push failed.
-    echo  Make sure you have committed your changes first.
+    echo  Make sure all changes are committed before deploying.
     echo.
     pause
     exit /b 1
@@ -41,11 +44,8 @@ if errorlevel 1 (
 echo        Pushed successfully.
 echo.
 
-:: ── Steps 2 and 3: PythonAnywhere pull + reload ───────────────────────────────
-:: We hand off to the PowerShell script which handles the API calls.
-:: -ExecutionPolicy Bypass allows the script to run without needing to change
-:: Windows security settings.
-powershell -ExecutionPolicy Bypass -File "%~dp0deploy_pa.ps1" -Token "%PA_TOKEN%"
+:: ── Steps 2 and 3: Pull on server + reload ────────────────────────────────────
+powershell -ExecutionPolicy Bypass -File "%~dp0deploy_pa.ps1" -Token "%PA_TOKEN%" -DeploySecret "%DEPLOY_SECRET%"
 
 echo.
 echo  =============================================

@@ -1,53 +1,45 @@
 # deploy_pa.ps1
-# This script talks to PythonAnywhere using their API to:
-#   1. Pull the latest code from GitHub onto the live server
-#   2. Reload the website so the changes take effect
+# Deploys the latest code to the live PythonAnywhere site by:
+#   1. Calling the /deploy webhook on the live site — this makes the server
+#      pull the latest code from GitHub by running "git pull"
+#   2. Reloading the web app via the PythonAnywhere API so the new code
+#      is picked up by the live site
 #
-# It is called automatically by deploy.bat — you don't need to run it directly.
+# Called automatically by deploy.bat — you don't need to run this directly.
 
 param(
-    [string]$Token  # The PythonAnywhere API token, passed in from deploy.bat
+    [string]$Token,        # PythonAnywhere API token
+    [string]$DeploySecret  # Secret that protects the /deploy webhook
 )
 
-# Settings for the PythonAnywhere account
-$username   = "gadge64"
-$domain     = "gadge64.pythonanywhere.com"
-$projectDir = "/home/gadge64/turbine-tracker"
+$username = "gadge64"
+$domain   = "gadge64.pythonanywhere.com"
 
-# The Authorization header is how PythonAnywhere knows who is making the request
+# The Authorization header identifies us to the PythonAnywhere API
 $headers = @{ Authorization = "Token $Token" }
 
-# ── Step 1: Open a bash console on PythonAnywhere and run "git pull" ──────────
-# This tells the live server to download the latest code we just pushed to GitHub.
-# The PythonAnywhere API lets us run shell commands remotely via their console API.
-Write-Host "[2/3] Pulling latest code onto PythonAnywhere server..."
-
-$body = @{
-    executable        = "bash"
-    # -c means "run this string as a shell command"
-    arguments         = "-c `"cd $projectDir && git pull`""
-    working_directory = $projectDir
-} | ConvertTo-Json  # Convert the PowerShell object to JSON format for the API
+# ── Step 1: Call the /deploy webhook on the live site ─────────────────────────
+# The Flask app has a hidden /deploy route that runs "git pull" when called
+# with the correct secret. This is more reliable than using the consoles API.
+Write-Host "[2/3] Triggering git pull on live server..."
 
 try {
-    Invoke-RestMethod `
-        -Uri         "https://www.pythonanywhere.com/api/v0/user/$username/consoles/" `
-        -Method      POST `
-        -Headers     $headers `
-        -ContentType "application/json" `
-        -Body        $body | Out-Null   # | Out-Null suppresses the raw API response from printing
+    $pullResult = Invoke-RestMethod `
+        -Uri    "https://$domain/deploy?secret=$DeploySecret" `
+        -Method GET
 
-    Write-Host "      Git pull triggered. Waiting 12 seconds for it to finish..."
+    Write-Host "      Server response: $pullResult"
 } catch {
-    Write-Host "      WARNING: Could not trigger git pull: $($_.Exception.Message)"
+    Write-Host "      WARNING: Deploy webhook failed: $($_.Exception.Message)"
+    Write-Host "      The site will still be reloaded but may not have the latest code."
 }
 
-# Wait for the git pull to finish on the remote server before reloading
-Start-Sleep -Seconds 12
+# Small pause to make sure the git pull is fully done before we reload
+Start-Sleep -Seconds 3
 
-# ── Step 2: Reload the live website ───────────────────────────────────────────
-# "Reloading" restarts the Python web process so it picks up the new code.
-# Without this step the site would still be running the old version.
+# ── Step 2: Reload the live website via the PythonAnywhere API ────────────────
+# This restarts the Python web process so it loads the newly pulled code.
+# Without this step the site would keep running the old version.
 Write-Host "[3/3] Reloading live website..."
 
 try {
