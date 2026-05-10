@@ -103,6 +103,10 @@ class User(db.Model):
     share_phone_public = db.Column(db.Integer, nullable=False, default=0)    # 1 = visible, 0 = hidden
     share_address_public = db.Column(db.Integer, nullable=False, default=0)  # 1 = visible, 0 = hidden
 
+    # When set, this account is hidden from all charts, comparisons, leaderboards, and community totals.
+    # Use for admin/test accounts that should not skew group analytics.
+    exclude_from_analytics = db.Column(db.Integer, nullable=False, default=0)
+
     # Wind turbine hardware details
     turbine_model = db.Column(db.String(200), nullable=True)
     turbine_capacity_kw = db.Column(db.Float, nullable=True)      # How many kilowatts the turbine can generate
@@ -313,6 +317,7 @@ def ensure_user_schema_sqlite() -> None:
         "mprn": "TEXT",
         "share_phone_public": "INTEGER",
         "share_address_public": "INTEGER",
+        "exclude_from_analytics": "INTEGER",
         "turbine_model": "TEXT",
         "turbine_capacity_kw": "REAL",
         "turbine_size_notes": "TEXT",
@@ -1024,7 +1029,7 @@ def users():
         ).group_by(TurbineEntry.user_id).all()
     }
     rows = []
-    for u in User.query.order_by(User.username.asc()).all():
+    for u in User.query.filter_by(exclude_from_analytics=0).order_by(User.username.asc()).all():
         s = stats.get(u.id)
         rows.append({
             "id": u.id,
@@ -1068,8 +1073,9 @@ def user_detail(user_id: int):
 @app.route("/compare")
 @login_required
 def compare():
-    users_all = User.query.order_by(User.username.asc()).all()
-    all_entries = TurbineEntry.query.order_by(TurbineEntry.year.asc(), TurbineEntry.month.asc()).all()
+    users_all = User.query.filter_by(exclude_from_analytics=0).order_by(User.username.asc()).all()
+    included_ids = {u.id for u in users_all}
+    all_entries = TurbineEntry.query.filter(TurbineEntry.user_id.in_(included_ids)).order_by(TurbineEntry.year.asc(), TurbineEntry.month.asc()).all()
     dates_sorted = sorted({e.date for e in all_entries})
     date_labels = [d.isoformat() for d in dates_sorted]
 
@@ -1584,6 +1590,7 @@ def admin_edit_profile(user_id: int):
         u.system_notes = request.form.get("system_notes") or None
         u.service_notes = request.form.get("service_notes") or None
         u.is_admin = 1 if request.form.get("is_admin") else 0
+        u.exclude_from_analytics = 1 if request.form.get("exclude_from_analytics") else 0
         new_pw = request.form.get("new_password", "").strip()
         if new_pw:
             u.password_hash = generate_password_hash(new_pw)
@@ -1596,8 +1603,9 @@ def admin_edit_profile(user_id: int):
 @app.route("/community")
 @login_required
 def community():
-    all_users = User.query.order_by(User.username.asc()).all()
-    all_entries = TurbineEntry.query.all()
+    all_users = User.query.filter_by(exclude_from_analytics=0).order_by(User.username.asc()).all()
+    included_ids = {u.id for u in all_users}
+    all_entries = TurbineEntry.query.filter(TurbineEntry.user_id.in_(included_ids)).all()
 
     today = datetime.date.today()
     available_years = sorted({e.year for e in all_entries})

@@ -6,9 +6,9 @@
   <a class="button-link" href="{{ url_for('admin_new_user') }}">Add new user</a>
   <a class="button-link btn-secondary" href="{{ url_for('admin_batch_users') }}">Batch add users</a>
 </div>
-<table><thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Admin</th><th>Actions</th></tr></thead><tbody>
+<table><thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Admin</th><th>Analytics</th><th>Actions</th></tr></thead><tbody>
 {% for u in users %}
-<tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.full_name or "" }}</td><td>{% if u.is_admin %}Yes{% else %}No{% endif %}</td>
+<tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.full_name or "" }}</td><td>{% if u.is_admin %}Yes{% else %}No{% endif %}</td><td>{% if u.exclude_from_analytics %}<span style="background:#f59e0b;color:#000;border-radius:10px;padding:1px 8px;font-size:.8rem;font-weight:700">Excluded</span>{% else %}—{% endif %}</td>
 <td>
   <a href="{{ url_for('admin_edit_profile', user_id=u.id) }}">Edit profile</a> ·
   <a href="{{ url_for('admin_reset_password', user_id=u.id) }}">Reset password</a> ·

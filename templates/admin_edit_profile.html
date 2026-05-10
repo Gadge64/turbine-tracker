@@ -26,6 +26,7 @@
 <div class="span-2"><label>System notes</label><textarea name="system_notes" rows="3">{{ user.system_notes or '' }}</textarea></div>
 <div class="span-2"><label>Service notes</label><textarea name="service_notes" rows="4">{{ user.service_notes or '' }}</textarea></div>
 <div><label>Admin access</label><label><input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %}> Grant admin</label></div>
+<div><label>Analytics</label><label><input type="checkbox" name="exclude_from_analytics" {% if user.exclude_from_analytics %}checked{% endif %}> Exclude from all charts &amp; comparisons</label></div>
 <div><label>Set new password <span class="muted">(leave blank to keep current)</span></label><input type="password" name="new_password" autocomplete="new-password"></div>
 </div>
 <div class="actions-row"><button>Save</button><a class="button-link btn-secondary" href="{{ url_for('admin_users') }}">Cancel</a></div>
