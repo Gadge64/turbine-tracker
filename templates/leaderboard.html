@@ -20,7 +20,7 @@
   <td><strong>{{ loop.index }}</strong></td>
   <td>{{ r.display_name }}</td>
   <td>{{ "—" if r.ytd_generated == 0 else "%.0f"|format(r.ytd_generated) }}</td>
-  <td>{{ "—" if r.avg_self_sufficiency is none else r.avg_self_sufficiency|string ~ "%" }}</td>
+  <td>{% if r.avg_self_sufficiency is none %}—{% else %}<span class="ss-badge {% if r.avg_self_sufficiency >= 60 %}ss-high{% elif r.avg_self_sufficiency >= 30 %}ss-mid{% else %}ss-low{% endif %}">{{ r.avg_self_sufficiency }}%</span>{% endif %}</td>
   <td>{{ "—" if r.all_time_generated == 0 else "%.0f"|format(r.all_time_generated) }}</td>
   <td>{{ r.entry_streak if r.entry_streak > 0 else "—" }}</td>
 </tr>

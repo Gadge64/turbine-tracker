@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Monthly Data Entry Form — Turbine Tracker</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  @page { size: A4; margin: 16mm 16mm 16mm 16mm; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11pt; color: #1e293b; background: #fff; }
+
+  /* ── Screen-only controls ── */
+  .screen-only { display: flex; gap: 10px; align-items: center; padding: 14px 20px; background: #1e293b; }
+  .print-btn { background: #16a34a; color: #fff; border: none; padding: 9px 22px; border-radius: 8px; font-size: .95rem; font-weight: 700; cursor: pointer; }
+  .print-btn:hover { background: #15803d; }
+  .back-link { color: #94a3b8; text-decoration: none; font-size: .85rem; }
+  .back-link:hover { color: #f8fafc; }
+  @media print { .screen-only { display: none !important; } }
+
+  /* ── Page wrapper ── */
+  .page { max-width: 210mm; margin: 0 auto; padding: 14mm 0 0; }
+  @media screen { .page { padding: 24px 32px; } }
+
+  /* ── Header ── */
+  .form-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #1e293b; padding-bottom: 10px; margin-bottom: 16px; }
+  .form-title { font-size: 16pt; font-weight: 800; letter-spacing: -.02em; color: #1e293b; }
+  .form-subtitle { font-size: 9pt; color: #64748b; margin-top: 2px; }
+  .turbine-mark { opacity: .18; }
+
+  /* ── Info row ── */
+  .info-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field-box { border-bottom: 1.5px solid #1e293b; padding-bottom: 4px; }
+  .field-box label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #64748b; display: block; margin-bottom: 10px; }
+
+  /* ── Section heading ── */
+  .section-head { background: #1e293b; color: #fff; font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 5px 10px; margin: 12px 0 0; border-radius: 4px 4px 0 0; }
+
+  /* ── Readings table ── */
+  .readings-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+  .readings-table th { background: #f1f5f9; font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #475569; padding: 6px 10px; text-align: left; border: 1px solid #cbd5e1; }
+  .readings-table td { border: 1px solid #cbd5e1; padding: 0; height: 32px; }
+  .readings-table td.label-cell { padding: 0 10px; font-weight: 600; font-size: 10pt; color: #1e293b; background: #f8fafc; width: 52%; }
+  .readings-table td.label-cell .hint { font-weight: 400; font-size: 7.5pt; color: #94a3b8; display: block; }
+  .readings-table td.value-cell { background: #fff; width: 24%; }
+  .readings-table td.unit-cell { background: #f8fafc; width: 24%; color: #64748b; font-size: 8.5pt; padding: 0 10px; }
+  .readings-table tr:hover td { background: #f0fdf4; }
+  .readings-table tr:hover td.unit-cell,
+  .readings-table tr:hover td.label-cell { background: #f0fdf4; }
+
+  /* ── Notes box ── */
+  .notes-box { border: 1px solid #cbd5e1; border-top: none; min-height: 56px; padding: 8px 10px; }
+  .notes-label { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #64748b; margin-bottom: 4px; }
+
+  /* ── Footer ── */
+  .form-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 8px; display: flex; justify-content: space-between; font-size: 8pt; color: #94a3b8; }
+  .sig-box { border-bottom: 1px solid #1e293b; width: 180px; display: inline-block; }
+
+  /* ── Dual-col layout for meter sections ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<div class="screen-only">
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <a class="back-link" href="javascript:history.back()">← Back</a>
+  <span style="color:#64748b;font-size:.8rem;margin-left:8px">Tip: set margins to "None" or "Minimum" in your browser's print dialog for best fit.</span>
+</div>
+
+<div class="page">
+
+  <div class="form-header">
+    <div>
+      <div class="form-title">Monthly Data Entry Form</div>
+      <div class="form-subtitle">Wind Turbine Tracker &nbsp;·&nbsp; turbinetracker.ie</div>
+    </div>
+    <svg class="turbine-mark" viewBox="0 0 120 210" width="52" height="91" xmlns="http://www.w3.org/2000/svg">
+      <rect x="44" y="200" width="32" height="8" rx="3" fill="#1e293b"/>
+      <polygon points="51,200 69,200 64,90 56,90" fill="#1e293b"/>
+      <rect x="55" y="83" width="24" height="11" rx="3" fill="#1e293b"/>
+      <g transform="translate(60,88)">
+        <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#1e293b"/>
+        <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#1e293b" transform="rotate(120)"/>
+        <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#1e293b" transform="rotate(240)"/>
+        <circle r="7" fill="#1e293b"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="info-row">
+    <div class="field-box">
+      <label>Member name</label>
+      <span style="font-size:10pt">{{ user.full_name or user.username }}</span>
+    </div>
+    <div class="field-box">
+      <label>Year</label>
+      &nbsp;
+    </div>
+    <div class="field-box">
+      <label>Month</label>
+      &nbsp;
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="section-head">Import meter</div>
+      <table class="readings-table">
+        <thead><tr><th>Reading</th><th>Value</th><th>Unit</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">Start reading<span class="hint">beginning of month</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+          <tr><td class="label-cell">End reading<span class="hint">end of month</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+          <tr><td class="label-cell">Total imported<span class="hint">end − start</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="section-head">Export meter</div>
+      <table class="readings-table">
+        <thead><tr><th>Reading</th><th>Value</th><th>Unit</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">Start reading<span class="hint">beginning of month</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+          <tr><td class="label-cell">End reading<span class="hint">end of month</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+          <tr><td class="label-cell">Total exported<span class="hint">end − start</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-head" style="margin-top:12px">Generation (E-mon)</div>
+  <table class="readings-table">
+    <thead><tr><th>Reading</th><th>Value</th><th>Unit</th></tr></thead>
+    <tbody>
+      <tr><td class="label-cell">E-mon 1 — generated this month</td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+      <tr><td class="label-cell">E-mon 2 — generated this month<span class="hint">dual inverter only — leave blank if single</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+      <tr><td class="label-cell">Inverter 1 running total<span class="hint">cumulative lifetime total</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+      <tr><td class="label-cell">Inverter 2 running total<span class="hint">dual inverter only</span></td><td class="value-cell"></td><td class="unit-cell">kWh</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-head" style="margin-top:12px">Tariff &amp; CO₂</div>
+  <table class="readings-table">
+    <thead><tr><th>Reading</th><th>Value</th><th>Unit</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="label-cell">Tariff rate<span class="hint">electricity price this month{% if user.entries %} — last used: check app{% endif %}</span></td>
+        <td class="value-cell"></td><td class="unit-cell">€/kWh</td>
+      </tr>
+      <tr><td class="label-cell">CO₂ offset<span class="hint">optional — from inverter display or app</span></td><td class="value-cell"></td><td class="unit-cell">kg</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-head" style="margin-top:12px">Notes</div>
+  <div class="notes-box"></div>
+
+  <div class="form-footer">
+    <div>
+      Signature: <span class="sig-box">&nbsp;</span>
+      &nbsp;&nbsp;&nbsp; Date entered: <span class="sig-box">&nbsp;</span>
+    </div>
+    <div>Turbine Tracker — {{ user.turbine_model or "—" }}{% if user.turbine_capacity_kw %} · {{ user.turbine_capacity_kw|int }} kW{% endif %}</div>
+  </div>
+
+</div>
+</body>
+</html>

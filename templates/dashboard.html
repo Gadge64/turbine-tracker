@@ -13,21 +13,18 @@
         <a class="button-link" href="{{ url_for('add_entry') }}">Add monthly entry</a>
         <a class="button-link btn-secondary" href="{{ url_for('quick_entry') }}">Quick entry</a>
         <a class="button-link btn-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
+        <a class="button-link btn-secondary" href="{{ url_for('monthly_form_print') }}">Print blank form</a>
         <a class="button-link btn-secondary" href="{{ url_for('import_csv') }}">Import CSV</a>
-        <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Download Full Backup</a>
+        <a class="button-link btn-secondary" href="{{ url_for('download_database_backup') }}">Backup</a>
       </div>
       <p class="muted" style="margin:10px 0 0"><strong>Entries:</strong> {{ entry_count }} | <strong>Total E-mon:</strong> {{ "%.2f"|format(total_e_mon) }} kWh</p>
     </div>
     <div style="flex-shrink:0;opacity:.85">
       <svg viewBox="0 0 120 210" width="90" height="158" xmlns="http://www.w3.org/2000/svg">
-        <!-- Base -->
         <rect x="44" y="200" width="32" height="8" rx="3" fill="#4b5563"/>
-        <!-- Tower -->
         <polygon points="51,200 69,200 64,90 56,90" fill="#9ca3af"/>
         <polygon points="63,200 69,200 64,90 61,90" fill="#d1d5db" opacity="0.45"/>
-        <!-- Nacelle -->
         <rect x="55" y="83" width="24" height="11" rx="3" fill="#6b7280"/>
-        <!-- Rotor centred at hub (60, 88) -->
         <g transform="translate(60,88)">
           <g class="t-rotor">
             <path d="M-3,4 C-5,-4 -2,-26 0,-44 C2,-26 5,-4 3,4 Z" fill="#c4c9d4"/>
@@ -44,18 +41,59 @@
 
 {% if lifetime_e_mon > 0 or lifetime_value > 0 %}
 <div class="card">
-  <h3 style="margin:0 0 10px">Lifetime summary{% if since_date %} <span class="muted" style="font-size:.9rem;font-weight:400">— since {{ since_date }}</span>{% endif %}</h3>
-  <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end">
-    <div><div class="muted">Generated</div><strong style="font-size:1.4rem">{{ "%.0f"|format(lifetime_e_mon) }} kWh</strong></div>
-    <div><div class="muted">Value @ tariff</div><strong style="font-size:1.4rem">€{{ "%.2f"|format(lifetime_value) }}</strong></div>
-    <div><div class="muted">Exported</div><strong style="font-size:1.4rem">{{ "%.0f"|format(lifetime_export) }} kWh</strong></div>
-    <div><div class="muted">Imported</div><strong style="font-size:1.4rem">{{ "%.0f"|format(lifetime_import) }} kWh</strong></div>
-    {% if lifetime_self_sufficiency is not none %}<div><div class="muted">Self-sufficient</div><strong style="font-size:1.4rem">{{ lifetime_self_sufficiency }}%</strong></div>{% endif %}
-    {% if lifetime_co2 > 0 %}<div><div class="muted">CO₂ offset</div><strong style="font-size:1.4rem">{{ "%.1f"|format(lifetime_co2) }} kg</strong></div>{% endif %}
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a class="button-link btn-secondary" href="{{ url_for('print_report') }}">Annual report</a>
-      <a class="button-link btn-secondary" href="{{ url_for('bulk_tariff') }}">Update tariff</a>
+  <h3 style="margin:0 0 14px">Lifetime summary{% if since_date %} <span class="muted" style="font-size:.9rem;font-weight:400">— since {{ since_date }}</span>{% endif %}</h3>
+  <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+    <div style="flex:1;min-width:260px">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-label">Generated</div>
+          <div class="stat-value">{{ "%.0f"|format(lifetime_e_mon) }}</div>
+          <div class="stat-sub">kWh</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💶</div>
+          <div class="stat-label">Value</div>
+          <div class="stat-value">€{{ "%.0f"|format(lifetime_value) }}</div>
+          <div class="stat-sub">at tariff</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📤</div>
+          <div class="stat-label">Exported</div>
+          <div class="stat-value">{{ "%.0f"|format(lifetime_export) }}</div>
+          <div class="stat-sub">kWh</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📥</div>
+          <div class="stat-label">Imported</div>
+          <div class="stat-value">{{ "%.0f"|format(lifetime_import) }}</div>
+          <div class="stat-sub">kWh</div>
+        </div>
+        {% if lifetime_co2 > 0 %}
+        <div class="stat-card">
+          <div class="stat-icon">🌿</div>
+          <div class="stat-label">CO₂ offset</div>
+          <div class="stat-value">{{ "%.0f"|format(lifetime_co2) }}</div>
+          <div class="stat-sub">kg</div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="actions-row" style="margin-top:4px">
+        <a class="button-link btn-secondary" href="{{ url_for('print_report') }}">Annual report</a>
+        <a class="button-link btn-secondary" href="{{ url_for('bulk_tariff') }}">Update tariff</a>
+      </div>
     </div>
+    {% if lifetime_self_sufficiency is not none %}
+    <div style="flex-shrink:0;text-align:center">
+      <div style="width:160px;height:160px;position:relative">
+        <canvas id="ssGauge"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+          <span style="font-size:1.6rem;font-weight:800;color:#16a34a">{{ lifetime_self_sufficiency }}%</span>
+          <span class="muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">self-suff</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -68,7 +106,7 @@
 {% endif %}
 
 {% if missing_months %}
-<div class="flash danger" style="border-color:#fca5a5">
+<div class="flash danger">
   <strong>Missing entries ({{ missing_months|length }}):</strong> {{ missing_months|join(", ") }}
   — <a href="{{ url_for('add_entry') }}">Add an entry</a>
 </div>
@@ -85,24 +123,31 @@
 <script>
 document.addEventListener("DOMContentLoaded", function(){
 if(typeof Chart==="undefined") return;
-const labels=["Imported total (kWh)","Exported total (kWh)","Used from wind (kWh)"];
+const PIE_COLORS=["#2563eb","#dc2626","#16a34a"];
+const labels=["Imported (kWh)","Exported (kWh)","Used from wind (kWh)"];
 const dataSets={
  pieYtd:[{{ pie_ytd_kwh["import_total_kwh"]|tojson }},{{ pie_ytd_kwh["export_total_kwh"]|tojson }},{{ pie_ytd_kwh["used_from_wind_kwh"]|tojson }}],
  pie12m:[{{ pie_12m_kwh["import_total_kwh"]|tojson }},{{ pie_12m_kwh["export_total_kwh"]|tojson }},{{ pie_12m_kwh["used_from_wind_kwh"]|tojson }}],
  pieAll:[{{ pie_all_kwh["import_total_kwh"]|tojson }},{{ pie_all_kwh["export_total_kwh"]|tojson }},{{ pie_all_kwh["used_from_wind_kwh"]|tojson }}]
 };
 function sum(v){return v.reduce((a,b)=>a+(Number(b)||0),0)}
-const valueLabelsPlugin={id:"valueLabelsPlugin",afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);const data=chart.data.datasets[0].data;const total=sum(data);if(!total)return;ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";meta.data.forEach((arc,i)=>{const v=Number(data[i])||0;if(v<=0||v/total<0.08)return;const p=arc.tooltipPosition();const text=(v>=100?Math.round(v):v.toFixed(1))+" kWh";ctx.font="12px sans-serif";ctx.lineWidth=3;ctx.strokeStyle="rgba(255,255,255,.85)";ctx.strokeText(text,p.x,p.y);ctx.fillStyle="#111";ctx.fillText(text,p.x,p.y)});ctx.restore();}};
+const valueLabelsPlugin={id:"vl",afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);const data=chart.data.datasets[0].data;const total=sum(data);if(!total)return;ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";meta.data.forEach((arc,i)=>{const v=Number(data[i])||0;if(v<=0||v/total<0.08)return;const p=arc.tooltipPosition();const text=(v>=100?Math.round(v):v.toFixed(1))+" kWh";ctx.font="bold 12px system-ui";ctx.lineWidth=3;ctx.strokeStyle="rgba(255,255,255,.9)";ctx.strokeText(text,p.x,p.y);ctx.fillStyle="#111";ctx.fillText(text,p.x,p.y)});ctx.restore();}};
 const noDataPlugin={id:"nd",afterDraw(c){const{ctx:x,chartArea:a}=c;x.save();x.textAlign="center";x.textBaseline="middle";x.fillStyle="#b91c1c";x.font="bold 13px system-ui";x.fillText("No data",(a.left+a.right)/2,(a.top+a.bottom)/2);x.restore();}};
 function pie(id,title){
   const values=dataSets[id];const el=document.getElementById(id);
-  if(sum(values)<=0){
-    new Chart(el,{type:"pie",data:{labels:["No data"],datasets:[{data:[1],backgroundColor:["#fecaca"],borderColor:["#fca5a5"],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:title}}},plugins:[noDataPlugin]});
-    return;
-  }
-  new Chart(el,{type:"pie",data:{labels:labels,datasets:[{data:values}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"},title:{display:true,text:title}}},plugins:[valueLabelsPlugin]});
+  if(sum(values)<=0){new Chart(el,{type:"pie",data:{labels:["No data"],datasets:[{data:[1],backgroundColor:["#fecaca"],borderColor:["#fca5a5"],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:title}}},plugins:[noDataPlugin]});return;}
+  new Chart(el,{type:"pie",data:{labels:labels,datasets:[{data:values,backgroundColor:PIE_COLORS,borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"},title:{display:true,text:title}}},plugins:[valueLabelsPlugin]});
 }
-pie("pieYtd","YTD kWh breakdown");pie("pie12m","Past 12 months kWh breakdown");pie("pieAll","All time kWh breakdown");
+pie("pieYtd","YTD kWh breakdown");pie("pie12m","Past 12 months");pie("pieAll","All time");
+
+{% if lifetime_self_sufficiency is not none %}
+const ssVal={{ lifetime_self_sufficiency }};
+new Chart(document.getElementById('ssGauge'),{
+  type:'doughnut',
+  data:{datasets:[{data:[ssVal,100-ssVal],backgroundColor:['#16a34a','rgba(100,116,139,0.15)'],borderWidth:0}]},
+  options:{responsive:true,maintainAspectRatio:true,cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}}}
+});
+{% endif %}
 });
 </script>
 </div>
@@ -119,12 +164,36 @@ document.addEventListener("DOMContentLoaded", function(){
 if(typeof Chart==="undefined") return;
 const lineLabels={{ labels|tojson }};
 const chartData={{ chart_data|tojson }};
+const METRIC_COLORS={
+  "E-mon (kWh)":"#16a34a","Import total (kWh)":"#2563eb","Export total (kWh)":"#dc2626",
+  "Used from wind (kWh)":"#0d9488","Self-sufficiency (%)":"#7c3aed",
+  "Inverter total (kWh)":"#475569","House total (Wind & Grid)":"#4338ca",
+  "Value @ tariff":"#d97706","CO₂ (kg)":"#065f46"
+};
+function hexRgba(h,a){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`rgba(${r},${g},${b},${a})`}
+function datasetFor(metric){
+  const color=METRIC_COLORS[metric]||"#64748b";
+  return[{label:metric,data:chartData[metric]||[],fill:true,tension:0.3,spanGaps:false,
+    borderColor:color,pointRadius:3,pointHoverRadius:5,
+    backgroundColor:function(ctx){
+      const chart=ctx.chart,{ctx:c,chartArea}=chart;
+      if(!chartArea)return hexRgba(color,.15);
+      const g=c.createLinearGradient(0,chartArea.top,0,chartArea.bottom);
+      g.addColorStop(0,hexRgba(color,.28));g.addColorStop(1,hexRgba(color,0));return g;
+    }
+  }];
+}
 const metricSelect=document.getElementById("metric");
 const ctx=document.getElementById("mainChart");
-function datasetFor(metric){return[{label:metric,data:chartData[metric]||[],fill:false,tension:0.2,spanGaps:false}]}
 let currentMetric=metricSelect.value;
-let chart=new Chart(ctx,{type:"line",data:{labels:lineLabels,datasets:datasetFor(currentMetric)},options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:"Month"}},y:{title:{display:true,text:currentMetric}}}}});
-metricSelect.addEventListener("change",function(){currentMetric=this.value;chart.data.datasets=datasetFor(currentMetric);chart.options.scales.y.title.text=currentMetric;chart.update();});
+let chart=new Chart(ctx,{type:"line",data:{labels:lineLabels,datasets:datasetFor(currentMetric)},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:"Month"},grid:{color:"rgba(100,116,139,.1)"}},
+            y:{title:{display:true,text:currentMetric},grid:{color:"rgba(100,116,139,.1)"}}}}});
+metricSelect.addEventListener("change",function(){
+  currentMetric=this.value;chart.data.datasets=datasetFor(currentMetric);
+  chart.options.scales.y.title.text=currentMetric;chart.update();
+});
 });
 </script>
 </div>
@@ -142,12 +211,28 @@ document.addEventListener("DOMContentLoaded",function(){
 if(typeof Chart==="undefined")return;
 const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const allData={{ yoy_datasets|tojson }};
-const colors=["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#0891b2","#be185d"];
+const yoyColors=["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#0891b2","#be185d"];
+function hexRgba2(h,a){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`rgba(${r},${g},${b},${a})`}
 const metricSel=document.getElementById("yoyMetric");
-const ctx=document.getElementById("yoyChart");
-function buildDatasets(metric){const yd=allData[metric]||{};return Object.keys(yd).sort().map((y,i)=>({label:y,data:yd[y],fill:false,tension:0.2,spanGaps:false,borderColor:colors[i%colors.length],backgroundColor:colors[i%colors.length]}));}
-let chart=new Chart(ctx,{type:"line",data:{labels:months,datasets:buildDatasets(metricSel.value)},options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:"Month"}},y:{title:{display:true,text:metricSel.value}}},plugins:{legend:{position:"top"}}}});
-metricSel.addEventListener("change",function(){chart.data.datasets=buildDatasets(this.value);chart.options.scales.y.title.text=this.value;chart.update();});
+const ctx2=document.getElementById("yoyChart");
+function buildDatasets(metric){
+  const yd=allData[metric]||{};
+  return Object.keys(yd).sort().map((y,i)=>{
+    const color=yoyColors[i%yoyColors.length];
+    return{label:y,data:yd[y],fill:true,tension:0.3,spanGaps:false,
+      borderColor:color,backgroundColor:hexRgba2(color,.12),
+      pointRadius:3,pointHoverRadius:5};
+  });
+}
+let chart2=new Chart(ctx2,{type:"line",data:{labels:months,datasets:buildDatasets(metricSel.value)},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:"Month"},grid:{color:"rgba(100,116,139,.1)"}},
+            y:{title:{display:true,text:metricSel.value},grid:{color:"rgba(100,116,139,.1)"}}},
+    plugins:{legend:{position:"top"}}}});
+metricSel.addEventListener("change",function(){
+  chart2.data.datasets=buildDatasets(this.value);
+  chart2.options.scales.y.title.text=this.value;chart2.update();
+});
 });
 </script>
 </div>
@@ -157,23 +242,40 @@ metricSel.addEventListener("change",function(){chart.data.datasets=buildDatasets
 <h3>Monthly entries</h3>
 {% if entries %}
 {% set month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] %}
-<table><thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import total</th><th>Export total</th><th>Used from wind</th><th>Self-suff %</th><th>Inv 1 total</th><th>Inv 2 total</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th><th></th></tr></thead><tbody>
+<table class="mobile-cards">
+<thead><tr><th>Year</th><th>Month</th><th>E-mon 1</th><th>E-mon 2</th><th>Import</th><th>Export</th><th>Wind used</th><th>Self-suff</th><th>Inv 1</th><th>Inv 2</th><th>Value</th><th>CO₂</th><th>Notes</th><th>Actions</th><th></th></tr></thead>
+<tbody>
 {% for e in entries %}
 {% set warns = entry_warnings.get(e.id, []) %}
-<tr{% if warns %} style="background:#fffbeb"{% endif %}>
-<td>{{ e.year }}</td><td>{{ month_names[e.month - 1] }}</td>
-<td>{{ "" if e.e_mon_kwh is none else "%.2f"|format(e.e_mon_kwh) }}</td>
-<td>{{ "" if e.e_mon_kwh_2 is none else "%.2f"|format(e.e_mon_kwh_2) }}</td>
-<td>{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
-<td>{{ "" if e.export_total_kwh() is none else "%.2f"|format(e.export_total_kwh()) }}</td>
-<td>{{ "" if e.used_from_wind_effective_kwh() is none else "%.2f"|format(e.used_from_wind_effective_kwh()) }}</td>
-<td>{{ "" if e.self_sufficiency_pct() is none else "%.1f"|format(e.self_sufficiency_pct()) ~ "%" }}</td>
-<td>{{ "" if e.inverter_total_kwh is none else "%.2f"|format(e.inverter_total_kwh) }}</td>
-<td>{{ "" if e.inverter_total_kwh_2 is none else "%.2f"|format(e.inverter_total_kwh_2) }}</td>
-<td>{{ "" if e.value_at_tariff() is none else "%.2f"|format(e.value_at_tariff()) }}</td>
-<td>{{ "" if e.co2_kg is none else "%.2f"|format(e.co2_kg) }}</td>
-<td class="note-cell">{{ e.notes or "" }}</td><td><a href="{{ url_for('edit_entry', entry_id=e.id) }}">Edit</a></td>
-<td>{% if warns %}<span style="color:#b45309;font-size:.82rem" title="{{ warns|join('; ') }}">&#9888; {{ warns|join('; ') }}</span>{% endif %}</td>
+{% set prev = entries[loop.index0 - 1] if loop.index0 > 0 else none %}
+{% set ss = e.self_sufficiency_pct() %}
+<tr{% if warns %} style="background:var(--warning-bg,#fffbeb)"{% endif %}>
+<td data-label="Year">{{ e.year }}</td>
+<td data-label="Month">{{ month_names[e.month - 1] }}</td>
+<td data-label="E-mon 1">
+  {{ "" if e.e_mon_kwh is none else "%.2f"|format(e.e_mon_kwh) }}
+  {% if prev and e.e_mon_total_kwh() is not none and prev.e_mon_total_kwh() is not none %}
+    {% if e.e_mon_total_kwh() > prev.e_mon_total_kwh() * 1.01 %}<span class="trend-up">↑</span>
+    {% elif e.e_mon_total_kwh() < prev.e_mon_total_kwh() * 0.99 %}<span class="trend-down">↓</span>
+    {% else %}<span class="trend-flat">→</span>{% endif %}
+  {% endif %}
+</td>
+<td data-label="E-mon 2">{{ "" if e.e_mon_kwh_2 is none else "%.2f"|format(e.e_mon_kwh_2) }}</td>
+<td data-label="Import">{{ "" if e.import_total_kwh() is none else "%.2f"|format(e.import_total_kwh()) }}</td>
+<td data-label="Export">{{ "" if e.export_total_kwh() is none else "%.2f"|format(e.export_total_kwh()) }}</td>
+<td data-label="Wind used">{{ "" if e.used_from_wind_effective_kwh() is none else "%.2f"|format(e.used_from_wind_effective_kwh()) }}</td>
+<td data-label="Self-suff">
+  {% if ss is not none %}
+    <span class="ss-badge {% if ss >= 60 %}ss-high{% elif ss >= 30 %}ss-mid{% else %}ss-low{% endif %}">{{ "%.0f"|format(ss) }}%</span>
+  {% endif %}
+</td>
+<td data-label="Inv 1">{{ "" if e.inverter_total_kwh is none else "%.2f"|format(e.inverter_total_kwh) }}</td>
+<td data-label="Inv 2">{{ "" if e.inverter_total_kwh_2 is none else "%.2f"|format(e.inverter_total_kwh_2) }}</td>
+<td data-label="Value">{{ "" if e.value_at_tariff() is none else "€%.2f"|format(e.value_at_tariff()) }}</td>
+<td data-label="CO₂">{{ "" if e.co2_kg is none else "%.2f"|format(e.co2_kg) }}</td>
+<td data-label="Notes" class="note-cell">{{ e.notes or "" }}</td>
+<td data-label=""><a href="{{ url_for('edit_entry', entry_id=e.id) }}">Edit</a></td>
+<td data-label="">{% if warns %}<span style="color:#b45309;font-size:.82rem" title="{{ warns|join('; ') }}">⚠ {{ warns|join('; ') }}</span>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody></table>

@@ -1584,6 +1584,16 @@ def print_report():
     )
 
 
+@app.route("/form/monthly")
+@login_required
+def monthly_form_print():
+    user = get_current_user()
+    today = datetime.date.today()
+    return render_template("monthly_form_print.html", user=user,
+                           year=today.year, month=today.month,
+                           month_abbrs=MONTH_ABBRS)
+
+
 @app.route("/add/quick", methods=["GET", "POST"])
 @login_required
 def quick_entry():
