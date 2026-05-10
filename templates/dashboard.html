@@ -65,10 +65,10 @@
 <div class="card">
   <h3>Pie charts (kWh only)</h3>
   <p class="muted">Past 12 months start: <strong>{{ pie_last12_start }}</strong></p>
-  <div class="form-grid two">
-    <div><label>YTD</label><div style="height:300px"><canvas id="pieYtd"></canvas></div></div>
-    <div><label>Past 12 months</label><div style="height:300px"><canvas id="pie12m"></canvas></div></div>
-    <div class="span-2"><label>All time</label><div style="height:320px"><canvas id="pieAll"></canvas></div></div>
+  <div class="pie-grid">
+    <div><label>YTD</label><div style="height:280px"><canvas id="pieYtd"></canvas></div></div>
+    <div><label>Past 12 months</label><div style="height:280px"><canvas id="pie12m"></canvas></div></div>
+    <div><label>All time</label><div style="height:280px"><canvas id="pieAll"></canvas></div></div>
   </div>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
@@ -81,7 +81,15 @@ const dataSets={
 };
 function sum(v){return v.reduce((a,b)=>a+(Number(b)||0),0)}
 const valueLabelsPlugin={id:"valueLabelsPlugin",afterDatasetsDraw(chart){const{ctx}=chart;const meta=chart.getDatasetMeta(0);const data=chart.data.datasets[0].data;const total=sum(data);if(!total)return;ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";meta.data.forEach((arc,i)=>{const v=Number(data[i])||0;if(v<=0||v/total<0.08)return;const p=arc.tooltipPosition();const text=(v>=100?Math.round(v):v.toFixed(1))+" kWh";ctx.font="12px sans-serif";ctx.lineWidth=3;ctx.strokeStyle="rgba(255,255,255,.85)";ctx.strokeText(text,p.x,p.y);ctx.fillStyle="#111";ctx.fillText(text,p.x,p.y)});ctx.restore();}};
-function pie(id,title){const values=dataSets[id]; if(sum(values)<=0)return; new Chart(document.getElementById(id),{type:"pie",data:{labels:labels,datasets:[{data:values}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"},title:{display:true,text:title}}},plugins:[valueLabelsPlugin]});}
+const noDataPlugin={id:"nd",afterDraw(c){const{ctx:x,chartArea:a}=c;x.save();x.textAlign="center";x.textBaseline="middle";x.fillStyle="#b91c1c";x.font="bold 13px system-ui";x.fillText("No data",(a.left+a.right)/2,(a.top+a.bottom)/2);x.restore();}};
+function pie(id,title){
+  const values=dataSets[id];const el=document.getElementById(id);
+  if(sum(values)<=0){
+    new Chart(el,{type:"pie",data:{labels:["No data"],datasets:[{data:[1],backgroundColor:["#fecaca"],borderColor:["#fca5a5"],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:title}}},plugins:[noDataPlugin]});
+    return;
+  }
+  new Chart(el,{type:"pie",data:{labels:labels,datasets:[{data:values}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"},title:{display:true,text:title}}},plugins:[valueLabelsPlugin]});
+}
 pie("pieYtd","YTD kWh breakdown");pie("pie12m","Past 12 months kWh breakdown");pie("pieAll","All time kWh breakdown");
 });
 </script>

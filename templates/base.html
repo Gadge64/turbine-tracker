@@ -167,6 +167,14 @@
     .muted { color: #64748b; font-size: .85rem; }
     .note-cell { max-width: 300px; white-space: pre-wrap; word-break: break-word; }
 
+    /* ── Pie chart 3-col grid ── */
+    .pie-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 768px) { .pie-grid { grid-template-columns: repeat(3, 1fr); } }
+
+    /* ── Header turbine spin ── */
+    .h-rotor { animation: h-spin 10s linear infinite; transform-origin: 0 0; }
+    @keyframes h-spin { to { transform: rotate(360deg); } }
+
     /* ── Mobile table scroll ── */
     @media (max-width: 768px) {
       .card { padding: 14px; border-radius: 12px; }
@@ -183,10 +191,12 @@
         <polygon points="51,200 69,200 64,90 56,90" fill="#94a3b8"/>
         <rect x="55" y="83" width="22" height="10" rx="3" fill="#64748b"/>
         <g transform="translate(60,88)">
-          <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1"/>
-          <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1" transform="rotate(120)"/>
-          <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1" transform="rotate(240)"/>
-          <circle r="5" fill="#475569"/>
+          <g class="h-rotor">
+            <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1"/>
+            <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1" transform="rotate(120)"/>
+            <path d="M-2.5,3 C-4,-3 -2,-22 0,-36 C2,-22 4,-3 2.5,3 Z" fill="#cbd5e1" transform="rotate(240)"/>
+            <circle r="5" fill="#475569"/>
+          </g>
         </g>
       </svg>
       Turbine Tracker
