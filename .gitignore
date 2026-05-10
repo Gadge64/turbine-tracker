@@ -3,3 +3,4 @@ instance/
 __pycache__/
 *.pyc
 .claude/
+pa_api_key.txt
