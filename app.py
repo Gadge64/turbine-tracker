@@ -1036,7 +1036,7 @@ def users():
         ).group_by(TurbineEntry.user_id).all()
     }
     rows = []
-    for u in User.query.filter_by(exclude_from_analytics=0).order_by(User.username.asc()).all():
+    for u in User.query.filter(User.exclude_from_analytics != 1).order_by(User.username.asc()).all():
         s = stats.get(u.id)
         rows.append({
             "id": u.id,
@@ -1080,7 +1080,7 @@ def user_detail(user_id: int):
 @app.route("/compare")
 @login_required
 def compare():
-    users_all = User.query.filter_by(exclude_from_analytics=0).order_by(User.username.asc()).all()
+    users_all = User.query.filter(User.exclude_from_analytics != 1).order_by(User.username.asc()).all()
     included_ids = {u.id for u in users_all}
     all_entries = TurbineEntry.query.filter(TurbineEntry.user_id.in_(included_ids)).order_by(TurbineEntry.year.asc(), TurbineEntry.month.asc()).all()
     dates_sorted = sorted({e.date for e in all_entries})
@@ -1615,7 +1615,7 @@ def admin_edit_profile(user_id: int):
 @app.route("/community")
 @login_required
 def community():
-    all_users = User.query.filter_by(exclude_from_analytics=0).order_by(User.username.asc()).all()
+    all_users = User.query.filter(User.exclude_from_analytics != 1).order_by(User.username.asc()).all()
     included_ids = {u.id for u in all_users}
     all_entries = TurbineEntry.query.filter(TurbineEntry.user_id.in_(included_ids)).all()
 
