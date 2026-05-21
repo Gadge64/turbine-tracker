@@ -338,6 +338,11 @@ def ensure_user_schema_sqlite() -> None:
         if col not in existing:
             # Run the SQL ALTER TABLE command to add the missing column
             db.session.execute(text(f"ALTER TABLE user ADD COLUMN {col} {sql_type}"))
+    # When a column is added via ALTER TABLE, existing rows get NULL instead of 0.
+    # NULL != 1 evaluates to NULL in SQL (not TRUE), so users with NULL in
+    # exclude_from_analytics get silently dropped from community/compare queries.
+    # This UPDATE is a safe no-op if all values are already set.
+    db.session.execute(text("UPDATE user SET exclude_from_analytics = 0 WHERE exclude_from_analytics IS NULL"))
     db.session.commit()  # Save the changes
 
 
